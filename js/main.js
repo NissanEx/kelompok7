@@ -1,6 +1,6 @@
 // ============================================================
-//  Blog Minimalis — main.js
-//  Logika utama: render blog, auth, profil, upload, modal
+//  Blog Minimalis — main.js (Revisi)
+//  Logika utama: render blog, auth, profil, upload, modal, edit, hapus
 //  Bergantung pada: koneksi.js (supabaseClient, isSupabaseActive)
 // ============================================================
 
@@ -195,9 +195,6 @@ function renderBlog(filterQuery = '') {
         // Cek apakah user adalah pemilik artikel
         const isOwner = currentUser && (blog.author === currentUser.split('@')[0] || 
                                         blog.author === currentUser);
-        
-        // Cek apakah user adalah admin (opsional)
-        // const isAdmin = currentUser && currentUser === 'admin@email.com';
 
         blogContainer.insertAdjacentHTML('beforeend', `
             <div class="blog-card flex flex-row items-center gap-3 sm:gap-5 w-full max-w-md hover-effect ${gridClass} text-white relative">
@@ -217,11 +214,11 @@ function renderBlog(filterQuery = '') {
                         </button>
                         ${isOwner ? `
                             <button onclick="editArtikel(${blog.id})"
-                                    class="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-[10px] transition-all duration-200 transform active:scale-95">
+                                    class="btn-edit">
                                 ✎ Edit
                             </button>
                             <button onclick="hapusArtikel(${blog.id})"
-                                    class="text-red-400/70 hover:text-red-400 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-[10px] transition-all duration-200 transform active:scale-95">
+                                    class="btn-hapus">
                                 ✕ Hapus
                             </button>
                         ` : ''}
