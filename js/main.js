@@ -9,7 +9,7 @@ let dataBlogLocal = [
     {
         id: 1,
         judul: "Senja di Tepi Danau",
-        author: "Author",
+        author: "Nissan",
         deskripsi: "Matahari perlahan tenggelam di balik cakrawala...",
         konten: "Matahari perlahan tenggelam di balik cakrawala, menyisakan semburat jingga keemasan yang memantul indah di permukaan danau yang tenang. Desau angin sore meniup dedaunan kering, menciptakan simfoni alam yang menenangkan jiwa yang sedang gundah.\n\nDalam keheningan senja itu, kenangan-kenangan masa lalu kembali menari-nari dalam ingatan. Setiap tawa, air mata, dan janji yang pernah terucap seakan hidup kembali dalam bayang-bayang kegelapan yang mulai merayap naik.\n\nIa menyadari bahwa waktu tidak pernah menunggu siapa pun, dan setiap detik yang terlewati adalah lembaran sejarah baru yang takkan pernah bisa ditulis ulang.",
         image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop",
@@ -18,7 +18,7 @@ let dataBlogLocal = [
     {
         id: 2,
         judul: "Manuskrip Peradaban",
-        author: "Author",
+        author: "SandyWiraabdy",
         deskripsi: "Di sebuah perpustakaan tua yang sunyi...",
         konten: "Di sebuah perpustakaan tua yang sunyi, aroma kertas usang bercampur dengan debu melayang yang tersorot oleh seberkas cahaya matahari senja dari balik jendela kaca besar. Seorang pria berkalung sorban duduk terpaku menatap lembaran manuskrip kuno abad pertengahan.\n\nIa menelusuri setiap baris teks beraksara indah itu dengan jari-jarinya yang gemetar. Baginya, setiap goresan tinta hitam di atas kertas kulit sapi ini menyimpan misteri besar peradaban yang telah lama tenggelam dalam pusaran waktu.\n\nIlmu pengetahuan bukan sekadar catatan masa lalu, melainkan lentera abadi yang menerangi lorong masa depan bagi generasi yang sudi mencari kebenaran.",
         image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop",
@@ -27,7 +27,7 @@ let dataBlogLocal = [
     {
         id: 3,
         judul: "Misteri Kesadaran",
-        author: "Author",
+        author: "Daffa",
         deskripsi: "Sains dan filsafat selalu berjalan beriringan...",
         konten: "Sains dan filsafat selalu berjalan beriringan dalam menguak rahasia kesadaran manusia. Dalam keheningan ruang kerjanya yang dipenuhi instrumen frekuensi suara, sang pemikir menatap botol kecil berisi cairan misterius di tangan.\n\nIa merenungkan bagaimana miliaran koneksi saraf di dalam otak dapat menciptakan fenomena visual, rasa, mimpi, dan memori kompleks yang membentuk kepribadian kita.\n\nApakah realitas eksternal benar-benar ada seperti yang kita tangkap, ataukah dunia ini hanyalah simulasi terperinci yang diproyeksikan oleh kesadaran kita sendiri?",
         image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=400&auto=format&fit=crop",
