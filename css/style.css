@@ -11,76 +11,70 @@
 
 html, body {
     min-height: 100vh;
-    min-height: 100dvh; /* Untuk mobile viewport yang lebih baik */
+    min-height: -webkit-fill-available;
     overflow-x: hidden;
+    overflow-y: auto;
     margin: 0;
     padding: 0;
+    background: #000000;
 }
 
 body {
     font-family: 'Lora', serif;
-    background-color: #000000;
     position: relative;
-}
-
-/* ---- Latar Belakang Video - FIXED & STABLE ---- */
-.bg-video {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
     height: 100vh;
-    height: 100dvh; /* Untuk mobile */
-    object-fit: cover;
-    z-index: -2;
-    pointer-events: none;
-    
-    /* Mencegah scrolling effect pada mobile */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    -webkit-perspective: 1000;
-    perspective: 1000;
-    
-    /* Optimasi performa */
-    will-change: transform;
-    
-    /* Mencegah gesture scroll mempengaruhi video */
-    touch-action: none;
+    height: -webkit-fill-available;
 }
 
-/* ---- Overlay gelap di atas video untuk readability ---- */
+/* ---- Video Background - PASTI TETAP DI TEMPAT ---- */
+.bg-video {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    object-fit: cover !important;
+    z-index: -999 !important;
+    pointer-events: none !important;
+    
+    /* Kunci: mencegah pergeseran */
+    transform: none !important;
+    -webkit-transform: none !important;
+    
+    /* Mencegah scroll mempengaruhi video */
+    position: fixed !important;
+    background: #000;
+}
+
+/* ---- Overlay gelap - TETAP DI TEMPAT ---- */
 body::before {
     content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: -1;
-    pointer-events: none;
-    
-    /* Mencegah scrolling effect */
-    -webkit-transform: translateZ(0);
-    transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: -998 !important;
+    pointer-events: none !important;
 }
 
-/* ---- Fallback untuk browser yang tidak support video ---- */
-.bg-video::after {
+/* ---- Fallback jika video tidak bisa dimuat ---- */
+video.bg-video::after {
     content: '';
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    background: radial-gradient(ellipse at center, #1a1a1a 0%, #000000 100%);
-    z-index: -3;
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    z-index: -1000;
 }
 
 /* ---- Scrollbar custom ---- */
@@ -132,68 +126,12 @@ html {
     animation: spin-slow 1.5s linear infinite;
 }
 
-/* ---- Fix untuk mobile Safari (iOS) ---- */
-@supports (-webkit-touch-callout: none) {
-    .bg-video {
-        height: 100vh;
-        /* Fallback untuk iOS yang tidak support 100dvh */
-    }
-}
-
-/* ---- Fix untuk Android Chrome ---- */
-@supports (-webkit-appearance: none) and (not (overflow: -webkit-marquee)) {
-    .bg-video {
-        height: 100vh;
-    }
-}
-
-/* ---- Responsive fix untuk semua device ---- */
-@media (max-width: 768px) {
-    .bg-video {
-        width: 100%;
-        height: 100%;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-    }
-    
-    body::before {
-        width: 100%;
-        height: 100%;
-    }
-}
-
-/* ---- Landscape mode fix ---- */
-@media (orientation: landscape) and (max-height: 500px) {
-    .bg-video {
-        height: 100vh;
-        width: 100vw;
-    }
-}
-
-/* ---- Tablet & Desktop ---- */
-@media (min-width: 769px) {
-    .bg-video {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        min-width: 100vw;
-        min-height: 100vh;
-        transform: translate(-50%, -50%) translateZ(0);
-        -webkit-transform: translate(-50%, -50%) translateZ(0);
-        width: auto;
-        height: auto;
-    }
-}
-
 /* ---- Loading Screen ---- */
 #page-loader {
     position: fixed;
     inset: 0;
     background: #1c1c1c;
-    z-index: 99;
+    z-index: 9999;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -201,20 +139,24 @@ html {
     transition: all 0.3s ease-in-out;
 }
 
-/* ---- Blog Card - Tambahan untuk mobile ---- */
+/* ---- Blog Card - Tanpa panel/box shadow berlebihan ---- */
 .blog-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-radius: 0;
+    padding: 8px 0;
+    border: none;
+    transition: transform 0.3s ease;
+}
+
+.blog-card:hover {
+    transform: scale(1.02);
 }
 
 @media (max-width: 640px) {
     .blog-card {
-        padding: 10px;
-        border-radius: 16px;
+        padding: 6px 0;
     }
 }
 
@@ -234,4 +176,66 @@ html {
     input, textarea, select, button {
         font-size: 16px !important;
     }
+}
+
+/* ---- Force fix untuk semua browser ---- */
+@supports (position: sticky) {
+    .bg-video {
+        position: fixed !important;
+    }
+}
+
+/* ---- Fix untuk Safari iOS ---- */
+@supports (-webkit-touch-callout: none) {
+    html, body {
+        height: -webkit-fill-available;
+    }
+    .bg-video {
+        height: 100% !important;
+        position: fixed !important;
+    }
+}
+
+/* ---- Fix untuk Chrome Android ---- */
+@supports (-webkit-appearance: none) and (not (overflow: -webkit-marquee)) {
+    .bg-video {
+        height: 100% !important;
+        position: fixed !important;
+    }
+}
+
+/* ---- Pastikan konten utama di atas video ---- */
+main, header, footer, .fixed, .z-40, .z-50, .z-60 {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- Hilangkan semua background panel pada konten --- */
+#blog-container > * {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* ---- Card info tanpa background ---- */
+.card-info {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* ---- Tombol Baca - styling minimal ---- */
+.btn-baca {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.btn-baca:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    transform: scale(1.05);
 }
