@@ -69,29 +69,29 @@ window.onload = async function () {
         }
     }, 500);
 
-    // 2. Menu bar meluncur turun (900ms)
+    // 2. Pill muncul dari atas — kecil & tanpa konten (700ms)
     setTimeout(() => {
         if (menuBar) {
-            menuBar.classList.remove('opacity-0', '-translate-y-24');
+            menuBar.classList.remove('opacity-0', '-translate-y-6');
             menuBar.classList.add('opacity-100', 'translate-y-0');
         }
-    }, 900);
+    }, 700);
 
-    // 3. Kapsul melebar horizontal (1300ms)
+    // 3. Pill melebar jadi navbar penuh (1050ms)
     setTimeout(() => {
         if (menuBar) {
-            menuBar.classList.remove('w-14', 'rounded-full', 'left-1/2', '-translate-x-1/2');
-            menuBar.classList.add('w-full', 'rounded-[20px]', 'left-0', 'translate-x-0');
+            menuBar.classList.remove('w-10', 'rounded-full');
+            menuBar.classList.add('w-full', 'rounded-2xl');
         }
-    }, 1300);
+    }, 1050);
 
-    // 4. Tampilkan konten menu (1700ms)
+    // 4. Konten fade in setelah navbar lebar sepenuhnya (1800ms)
     setTimeout(() => {
         if (menuContent) {
             menuContent.classList.remove('opacity-0', 'pointer-events-none');
             menuContent.classList.add('opacity-100', 'pointer-events-auto');
         }
-    }, 1700);
+    }, 1800);
 
     // Pasang semua event listener setelah DOM siap
     pasangEventListeners();
@@ -139,7 +139,7 @@ function renderBlog(filterQuery = '') {
     if (filteredBlog.length === 0) {
         blogContainer.innerHTML = `
             <div class="col-span-full text-center py-12 opacity-75">
-                <p class="text-xl font-serif italic text-black">Tidak ada konten yang cocok ditemukan...</p>
+                <p class="text-xl font-serif italic text-white/70">Tidak ada konten yang cocok ditemukan...</p>
             </div>`;
         return;
     }
@@ -149,18 +149,18 @@ function renderBlog(filterQuery = '') {
         const gridClass = isThird ? "md:col-span-2 md:justify-self-center md:mt-6" : "";
 
         blogContainer.insertAdjacentHTML('beforeend', `
-            <div class="flex flex-row items-center gap-6 w-full max-w-md hover-effect ${gridClass} text-black">
+            <div class="blog-card flex flex-row items-center gap-3 sm:gap-5 w-full max-w-md hover-effect ${gridClass} text-white">
                 <img src="${blog.image}" alt="Ilustrasi ${blog.judul}"
-                     class="w-28 h-28 md:w-36 md:h-36 rounded-[24px] object-cover shadow-2xl shrink-0"
+                     class="w-20 h-20 sm:w-28 sm:h-28 md:w-36 md:h-36 rounded-[14px] sm:rounded-[20px] md:rounded-[24px] object-cover shadow-xl shrink-0"
                      onerror="this.src='https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop'">
-                <div class="flex flex-col justify-between h-28 md:h-36 py-1 flex-grow">
+                <div class="card-info flex flex-col justify-between h-20 sm:h-28 md:h-36 py-0.5 flex-grow">
                     <div>
-                        <h2 class="text-3xl font-bold leading-none text-black font-serif">${blog.judul}</h2>
-                        <p class="font-bold text-xs text-gray-800 mt-1">Oleh ${blog.author}</p>
-                        <p class="text-xs text-gray-700 mt-2 leading-relaxed line-clamp-2">${blog.deskripsi}</p>
+                        <h2 class="text-lg sm:text-2xl md:text-3xl font-bold leading-tight text-white font-serif line-clamp-2">${blog.judul}</h2>
+                        <p class="card-author font-bold text-[9px] sm:text-[10px] md:text-xs text-white/70 mt-0.5">Oleh ${blog.author}</p>
+                        <p class="card-desc text-[9px] sm:text-[10px] md:text-xs text-white/55 mt-1 leading-relaxed line-clamp-1 sm:line-clamp-2">${blog.deskripsi}</p>
                     </div>
                     <button onclick="bukaArtikel(${blog.id})"
-                            class="self-start ${blog.color || 'bg-[#4a0e0e] hover:bg-[#5f1414]'} text-white px-6 py-1.5 rounded-full text-xs font-semibold shadow-md transition-all duration-200 transform active:scale-95">
+                            class="btn-baca self-start ${blog.color || 'bg-[#4a0e0e] hover:bg-[#5f1414]'} text-white px-3 py-1 sm:px-5 sm:py-1.5 md:px-6 rounded-full text-[9px] sm:text-[10px] md:text-xs font-semibold shadow-md transition-all duration-200 transform active:scale-95">
                         Baca
                     </button>
                 </div>
@@ -309,27 +309,44 @@ function pasangEventListeners() {
 
     let currentTab = 'masuk';
 
-    /* ---- Toggle Menu Bar ---- */
-    if (menuBar) {
-        menuBar.addEventListener('click', (e) => {
-            if (menuContent && menuContent.classList.contains('opacity-0')) return;
-            if (e.target.closest('#search-input') || e.target.closest('#extra-menu')) return;
+    /* ---- Toggle Dropdown Menu (hamburger) ---- */
+    const menuToggleBtn = document.getElementById('menu-toggle-btn');
+    const hamTop        = document.getElementById('ham-top');
+    const hamBottom     = document.getElementById('ham-bottom');
 
-            if (extraMenu.classList.contains('hidden')) {
-                extraMenu.classList.remove('hidden');
-                menuBar.classList.remove('max-h-14');
-                menuBar.classList.add('max-h-40');
-            } else {
-                menuBar.classList.remove('max-h-40');
-                menuBar.classList.add('max-h-14');
-                setTimeout(() => {
-                    if (menuBar.classList.contains('max-h-14')) {
-                        extraMenu.classList.add('hidden');
-                    }
-                }, 300);
-            }
+    function openDropdown() {
+        if (!extraMenu) return;
+        extraMenu.classList.remove('max-h-0', 'opacity-0');
+        extraMenu.classList.add('max-h-32', 'opacity-100');
+        if (hamTop)    { hamTop.classList.add('rotate-45', 'translate-y-[3px]'); }
+        if (hamBottom) { hamBottom.classList.add('-rotate-45', '-translate-y-[3px]'); }
+    }
+
+    function closeDropdown() {
+        if (!extraMenu) return;
+        extraMenu.classList.remove('max-h-32', 'opacity-100');
+        extraMenu.classList.add('max-h-0', 'opacity-0');
+        if (hamTop)    { hamTop.classList.remove('rotate-45', 'translate-y-[3px]'); }
+        if (hamBottom) { hamBottom.classList.remove('-rotate-45', '-translate-y-[3px]'); }
+    }
+
+    function isDropdownOpen() {
+        return extraMenu && extraMenu.classList.contains('max-h-32');
+    }
+
+    if (menuToggleBtn) {
+        menuToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (isDropdownOpen()) { closeDropdown(); } else { openDropdown(); }
         });
     }
+
+    // Tutup dropdown saat klik di luar navbar
+    document.addEventListener('click', (e) => {
+        if (isDropdownOpen() && !e.target.closest('#menu-bar')) {
+            closeDropdown();
+        }
+    });
 
     /* ---- Pencarian Live ---- */
     if (searchInput) {
@@ -380,6 +397,7 @@ function pasangEventListeners() {
     if (masukBtn) {
         masukBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
+            closeDropdown();
             if (currentUser) {
                 if (isSupabaseActive) await supabaseClient.auth.signOut();
                 currentUser    = null;
@@ -549,6 +567,11 @@ function pasangEventListeners() {
 
     if (tulisBtn) {
         tulisBtn.addEventListener('click', () => {
+            if (!currentUser) {
+                // Belum login — arahkan ke halaman auth
+                window.location.href = 'auth.html';
+                return;
+            }
             if (modalTulis) {
                 modalTulis.classList.remove('opacity-0', 'pointer-events-none');
                 modalTulis.classList.add('opacity-100', 'pointer-events-auto');

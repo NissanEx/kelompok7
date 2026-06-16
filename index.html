@@ -7,107 +7,177 @@
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="../css/style.css">
 </head>
 <body class="min-h-screen text-white flex flex-col justify-between overflow-x-hidden bg-black">
 
     <!-- Latar Belakang Video -->
     <video autoplay muted loop playsinline class="bg-video">
-        <source src="vid/green-tree-moewalls-com.mp4" type="video/mp4">
+        <source src="https://www.w3schools.com/howto/rain.mp4" type="video/mp4">
     </video>
 
     <!-- Splash Screen Loading -->
     <div id="page-loader" class="fixed inset-0 bg-[#1c1c1c] z-[99] flex flex-col items-center justify-center transition-all duration-300 ease-in-out">
-        <div class="flex flex-col items-center gap-6">
-            <div class="w-12 h-12 border-2 border-white/10 border-t-white rounded-full animate-spin-slow"></div>
-            <p id="loader-text" class="text-white/60 tracking-widest text-xs uppercase font-sans font-semibold animate-pulse">
+        <div class="flex flex-col items-center gap-4">
+            <div class="w-10 h-10 border-2 border-white/10 border-t-white rounded-full animate-spin-slow"></div>
+            <p id="loader-text" class="text-white/60 tracking-widest text-[10px] uppercase font-sans font-semibold animate-pulse">
                 Menghubungkan Ruang Cerita...
             </p>
         </div>
     </div>
 
-    <!-- Header — Menu Bar Fixed -->
-    <header class="fixed top-0 left-0 w-full p-6 flex flex-col items-center z-50">
-        <div class="w-full max-w-4xl h-14 relative">
-            <div id="menu-bar" class="absolute top-0 left-1/2 -translate-x-1/2 w-14 max-h-14 bg-white/80 backdrop-blur-md rounded-full border border-white/20 shadow-lg flex flex-col justify-start px-6 py-3 cursor-pointer transition-all duration-500 ease-out overflow-hidden opacity-0 -translate-y-24">
+    <!-- ==================== HEADER ==================== -->
+    <header class="fixed top-0 left-0 w-full z-50 px-3 sm:px-6 pt-3 sm:pt-5">
+        <div class="w-full max-w-4xl mx-auto flex justify-center">
 
-                <div id="menu-content" class="opacity-0 transition-opacity duration-300 pointer-events-none w-full flex flex-col">
-                    <div class="flex items-center justify-between h-8 shrink-0 w-full">
-                        <span id="home-btn" class="text-black font-bold text-sm hover:opacity-80 transition cursor-pointer">
+            <!-- Navbar — mulai sebagai pil kecil, melebar ke full width -->
+            <div id="menu-bar"
+                 class="bg-white/90 backdrop-blur-md border border-white/30 shadow-xl
+                        px-5 sm:px-6 py-2.5 sm:py-3
+                        opacity-0 -translate-y-6
+                        w-10 rounded-full
+                        transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]">
+
+                <div id="menu-content"
+                     class="opacity-0 pointer-events-none transition-opacity duration-400">
+
+                    <!-- Baris utama: Home + Search + Hamburger -->
+                    <div class="flex items-center gap-2 sm:gap-4 w-full">
+
+                        <span id="home-btn"
+                              class="text-black font-bold text-xs sm:text-sm
+                                     hover:opacity-60 transition cursor-pointer whitespace-nowrap shrink-0">
                             Home
                         </span>
 
-                        <!-- Kotak Pencarian -->
-                        <div class="w-72 md:w-80 relative">
-                            <input id="search-input" type="text" placeholder="Cari di sini..."
-                                class="w-full bg-white text-gray-800 placeholder-gray-400 text-xs pl-4 pr-10 py-1.5 rounded-full focus:outline-none focus:ring-2 focus:ring-black/25 shadow-inner cursor-text font-sans">
-                            <span class="absolute inset-y-0 right-3.5 flex items-center pointer-events-none">
-                                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z"/>
+                        <!-- Search bar — mengisi ruang di tengah -->
+                        <div class="relative flex-grow">
+                            <input id="search-input" type="text" placeholder="Cari artikel..."
+                                class="w-full bg-black/[0.06] text-gray-800 placeholder-gray-400
+                                       text-[11px] sm:text-xs
+                                       pl-3 sm:pl-4 pr-8 sm:pr-9
+                                       py-1.5 sm:py-2
+                                       rounded-full border border-black/[0.08]
+                                       focus:outline-none focus:ring-2 focus:ring-black/15
+                                       font-sans transition">
+                            <span class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-gray-400"
+                                     fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z"/>
                                 </svg>
                             </span>
                         </div>
+
+                        <!-- Hamburger -->
+                        <button id="menu-toggle-btn"
+                                class="shrink-0 flex flex-col justify-center items-center gap-[4px] w-6 h-6
+                                       hover:opacity-60 transition-opacity focus:outline-none">
+                            <span id="ham-top"    class="block w-3.5 h-[1.5px] bg-black rounded-full transition-all duration-300"></span>
+                            <span id="ham-bottom" class="block w-3.5 h-[1.5px] bg-black rounded-full transition-all duration-300"></span>
+                        </button>
                     </div>
 
-                    <!-- Opsi Tambahan -->
-                    <div id="extra-menu" class="hidden mt-3 flex flex-col gap-2.5 pt-2">
-                        <button id="profil-btn" class="hidden text-black font-semibold text-sm hover:opacity-75 transition block text-left w-full focus:outline-none">
+                    <!-- Dropdown menu — animasi slide+fade -->
+                    <div id="extra-menu"
+                         class="overflow-hidden max-h-0 opacity-0
+                                transition-all duration-300 ease-in-out
+                                flex flex-col gap-0">
+                        <button id="profil-btn"
+                                class="hidden text-black font-semibold text-xs sm:text-sm
+                                       hover:opacity-60 transition text-left w-full
+                                       pt-3 pb-0.5 focus:outline-none">
                             Profil Saya
                         </button>
-                        <button id="masuk-btn" class="text-black font-semibold text-sm hover:opacity-75 transition block text-left w-full focus:outline-none">
+                        <button id="masuk-btn"
+                                class="text-black font-semibold text-xs sm:text-sm
+                                       hover:opacity-60 transition text-left w-full
+                                       pt-3 pb-0.5 focus:outline-none">
                             Masuk
                         </button>
                     </div>
+
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Konten Utama — Grid Blog -->
-    <main class="w-full px-6 pt-28 pb-24 flex-grow flex items-center justify-center relative">
-        <div id="blog-container" class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-12 max-w-5xl w-full mx-auto py-8">
+    <!-- ==================== KONTEN UTAMA ==================== -->
+    <main class="w-full px-3 sm:px-6 pt-16 sm:pt-28 pb-20 sm:pb-24 flex-grow flex items-start sm:items-center justify-center relative">
+        <div id="blog-container"
+             class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 sm:gap-x-16 gap-y-3 sm:gap-y-12
+                    max-w-5xl w-full mx-auto py-2 sm:py-8">
             <!-- Dirender secara dinamis oleh main.js -->
         </div>
     </main>
 
     <!-- Tombol Tulis Floating -->
-    <div class="fixed bottom-10 right-10 z-40">
-        <button id="tulis-btn" class="bg-black text-white px-10 py-3 rounded-xl shadow-2xl hover:bg-gray-900 transition font-bold tracking-wide">
+    <div class="fixed bottom-4 sm:bottom-10 right-3 sm:right-10 z-40">
+        <button id="tulis-btn"
+                class="bg-black text-white px-5 sm:px-10 py-2 sm:py-3
+                       rounded-lg sm:rounded-xl shadow-2xl hover:bg-gray-900
+                       transition font-bold tracking-wide text-xs sm:text-base">
             Tulis
         </button>
     </div>
 
+
     <!-- ==================== MODAL PROFIL ==================== -->
-    <div id="modal-profil" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 opacity-0 pointer-events-none transition-all duration-200">
-        <div id="modal-profil-card" class="bg-[#1c1c1c] text-white w-full max-w-xl rounded-[24px] p-8 md:p-10 shadow-2xl flex flex-col justify-between relative transform scale-95 transition-all duration-200 min-h-[420px] border border-white/5">
-            <button id="tutup-profil" class="absolute top-5 right-7 text-white/40 hover:text-white hover:scale-110 text-3xl font-light transition duration-150 focus:outline-none z-10">&times;</button>
-            <div class="flex flex-col gap-6 w-full relative z-10 flex-grow justify-between">
-                <div>
-                    <h2 class="text-4xl font-serif tracking-wide mb-6 font-medium border-b border-white/10 pb-3">Profil Saya</h2>
-                    <div class="flex flex-col sm:flex-row gap-6 items-center mb-6">
-                        <div id="pilih-avatar-trigger" class="w-24 h-24 bg-[#d1d1d1] rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-all duration-200 overflow-hidden relative shadow-md group border-2 border-white/10">
-                            <span id="avatar-placeholder-teks" class="text-gray-600 text-xs font-semibold">Avatar</span>
-                            <img id="preview-avatar" class="hidden absolute inset-0 w-full h-full object-cover">
-                        </div>
-                        <input type="file" id="avatar-input" accept="image/*" class="hidden">
-                        <div class="flex-grow w-full">
-                            <label class="text-[10px] text-white/40 uppercase tracking-widest font-sans font-semibold block mb-1">Nama Pengguna / Email</label>
-                            <input id="profile-display-name" type="text" class="w-full bg-[#d1d1d1] text-gray-800 py-2 px-5 rounded-full font-semibold text-sm shadow-inner" readonly>
-                        </div>
+    <div id="modal-profil"
+         class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-end sm:items-center justify-center
+                p-0 sm:p-6 opacity-0 pointer-events-none transition-all duration-200">
+        <div id="modal-profil-card"
+             class="bg-[#1c1c1c] text-white w-full sm:max-w-xl
+                    rounded-t-[24px] sm:rounded-[24px]
+                    p-5 sm:p-10 shadow-2xl flex flex-col justify-between relative
+                    transform translate-y-4 sm:translate-y-0 sm:scale-95
+                    transition-all duration-200 border border-white/5"
+             style="max-height:90vh;overflow-y:auto;">
+
+            <button id="tutup-profil"
+                    class="absolute top-4 right-5 text-white/40 hover:text-white text-3xl font-light transition focus:outline-none z-10">
+                &times;
+            </button>
+
+            <div class="flex flex-col gap-4 sm:gap-6 w-full relative z-10">
+                <h2 class="text-2xl sm:text-4xl font-serif tracking-wide font-medium border-b border-white/10 pb-3">Profil Saya</h2>
+
+                <!-- Avatar + Nama -->
+                <div class="flex flex-row gap-4 items-center">
+                    <div id="pilih-avatar-trigger"
+                         class="w-16 h-16 sm:w-24 sm:h-24 bg-[#d1d1d1] rounded-full flex items-center justify-center
+                                cursor-pointer hover:bg-gray-300 transition-all overflow-hidden relative shadow-md shrink-0 border-2 border-white/10">
+                        <span id="avatar-placeholder-teks" class="text-gray-600 text-[10px] font-semibold">Avatar</span>
+                        <img id="preview-avatar" class="hidden absolute inset-0 w-full h-full object-cover">
                     </div>
-                    <div class="flex flex-col gap-2 mb-6">
-                        <label class="text-[10px] text-white/40 uppercase tracking-widest font-sans font-semibold">Bio Singkat</label>
-                        <textarea id="profile-bio" placeholder="Tulis sesuatu tentang diri Anda..." class="w-full h-24 bg-white text-gray-800 rounded-[15px] p-4 focus:outline-none resize-none text-sm leading-relaxed no-scrollbar shadow-inner"></textarea>
-                    </div>
-                    <div class="bg-black/20 rounded-[15px] p-4 flex justify-around text-center border border-white/5">
-                        <div>
-                            <span id="profile-stat-posts" class="block text-3xl font-bold text-white font-sans">0</span>
-                            <span class="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Konten Di-upload</span>
-                        </div>
+                    <input type="file" id="avatar-input" accept="image/*" class="hidden">
+                    <div class="flex-grow">
+                        <label class="text-[9px] text-white/40 uppercase tracking-widest font-sans font-semibold block mb-1">Nama / Email</label>
+                        <input id="profile-display-name" type="text"
+                               class="w-full bg-[#d1d1d1] text-gray-800 py-1.5 sm:py-2 px-4 sm:px-5 rounded-full font-semibold text-xs sm:text-sm shadow-inner" readonly>
                     </div>
                 </div>
-                <div class="flex justify-end mt-4">
-                    <button id="simpan-profil-btn" class="bg-black hover:bg-gray-900 active:scale-95 text-white px-8 py-2 rounded-xl text-xs font-bold tracking-wider shadow-lg transition-all duration-200">
+
+                <!-- Bio -->
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[9px] text-white/40 uppercase tracking-widest font-sans font-semibold">Bio Singkat</label>
+                    <textarea id="profile-bio" placeholder="Tulis sesuatu tentang diri Anda..."
+                              class="w-full h-20 sm:h-24 bg-white text-gray-800 rounded-[12px] sm:rounded-[15px] p-3 sm:p-4
+                                     focus:outline-none resize-none text-xs sm:text-sm leading-relaxed no-scrollbar shadow-inner"></textarea>
+                </div>
+
+                <!-- Statistik -->
+                <div class="bg-black/20 rounded-[12px] sm:rounded-[15px] p-3 sm:p-4 flex justify-around text-center border border-white/5">
+                    <div>
+                        <span id="profile-stat-posts" class="block text-2xl sm:text-3xl font-bold text-white font-sans">0</span>
+                        <span class="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-wider font-semibold">Konten Di-upload</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end">
+                    <button id="simpan-profil-btn"
+                            class="bg-black hover:bg-gray-900 active:scale-95 text-white px-6 sm:px-8 py-2
+                                   rounded-xl text-[10px] sm:text-xs font-bold tracking-wider shadow-lg transition-all duration-200">
                         Simpan Perubahan
                     </button>
                 </div>
@@ -115,76 +185,138 @@
         </div>
     </div>
 
+
     <!-- ==================== MODAL MASUK / DAFTAR ==================== -->
-    <div id="modal-masuk" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 opacity-0 pointer-events-none transition-all duration-200">
-        <div id="modal-masuk-card" class="bg-[#1c1c1c] text-white w-full max-w-3xl rounded-[24px] p-10 md:p-12 shadow-2xl flex flex-col justify-between relative transform scale-95 transition-all duration-200 min-h-[460px] border border-white/5 overflow-hidden">
-            <button id="tutup-masuk" class="absolute top-5 right-7 text-white/40 hover:text-white hover:scale-110 text-3xl font-light transition duration-150 focus:outline-none z-10">&times;</button>
-            <div class="flex flex-col justify-between h-full flex-grow relative z-10">
-                <div class="max-w-md">
-                    <div class="flex gap-8 mb-8 pb-2">
-                        <button id="tab-masuk" class="text-4xl font-serif tracking-wide font-medium pb-2 text-white focus:outline-none transition duration-150">Masuk</button>
-                        <button id="tab-daftar" class="text-4xl font-serif tracking-wide font-medium pb-2 text-white/40 hover:text-white/80 focus:outline-none transition duration-150">Daftar</button>
-                    </div>
-                    <div class="flex flex-col gap-4 w-full max-w-xs mb-6">
-                        <input id="login-username" type="text" placeholder="Email atau Username"
-                            class="w-full bg-[#d1d1d1] text-gray-800 placeholder-gray-500 py-2.5 px-6 rounded-full focus:outline-none focus:ring-2 focus:ring-black/30 text-sm font-semibold shadow-inner transition duration-150">
-                        <input id="login-password" type="password" placeholder="Kata Sandi"
-                            class="w-full bg-[#d1d1d1] text-gray-800 placeholder-gray-500 py-2.5 px-6 rounded-full focus:outline-none focus:ring-2 focus:ring-black/30 text-sm font-semibold shadow-inner transition duration-150">
-                        <input id="login-confirm-password" type="password" placeholder="Konfirmasi Kata Sandi"
-                            class="hidden w-full bg-[#d1d1d1] text-gray-800 placeholder-gray-500 py-2.5 px-6 rounded-full focus:outline-none focus:ring-2 focus:ring-black/30 text-sm font-semibold shadow-inner transition duration-150">
-                    </div>
-                    <div class="w-full max-w-xs flex justify-center mt-6">
-                        <button id="mulai-btn" class="bg-black hover:bg-gray-900 active:scale-95 text-white px-8 py-2 rounded-xl text-xs font-bold tracking-wider shadow-lg transition-all duration-200">
-                            Mulai
-                        </button>
-                    </div>
+    <div id="modal-masuk"
+         class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-end sm:items-center justify-center
+                p-0 sm:p-6 opacity-0 pointer-events-none transition-all duration-200">
+        <div id="modal-masuk-card"
+             class="bg-[#1c1c1c] text-white w-full sm:max-w-3xl
+                    rounded-t-[24px] sm:rounded-[24px]
+                    p-6 sm:p-12 shadow-2xl flex flex-col justify-between relative
+                    transform translate-y-4 sm:translate-y-0 sm:scale-95
+                    transition-all duration-200 border border-white/5 overflow-hidden">
+
+            <button id="tutup-masuk"
+                    class="absolute top-4 right-5 text-white/40 hover:text-white text-3xl font-light transition focus:outline-none z-10">
+                &times;
+            </button>
+
+            <div class="flex flex-col relative z-10">
+                <!-- Tab -->
+                <div class="flex gap-6 sm:gap-8 mb-6 sm:mb-8">
+                    <button id="tab-masuk"
+                            class="text-2xl sm:text-4xl font-serif tracking-wide font-medium pb-1 text-white focus:outline-none transition border-b-2 border-white">
+                        Masuk
+                    </button>
+                    <button id="tab-daftar"
+                            class="text-2xl sm:text-4xl font-serif tracking-wide font-medium pb-1 text-white/40 hover:text-white/80 focus:outline-none transition border-b-2 border-transparent">
+                        Daftar
+                    </button>
+                </div>
+
+                <!-- Input -->
+                <div class="flex flex-col gap-3 sm:gap-4 w-full max-w-xs mb-5 sm:mb-6">
+                    <input id="login-username" type="text" placeholder="Email atau Username"
+                        class="w-full bg-[#d1d1d1] text-gray-800 placeholder-gray-500
+                               py-2 sm:py-2.5 px-4 sm:px-6 rounded-full
+                               focus:outline-none focus:ring-2 focus:ring-black/30
+                               text-xs sm:text-sm font-semibold shadow-inner transition">
+                    <input id="login-password" type="password" placeholder="Kata Sandi"
+                        class="w-full bg-[#d1d1d1] text-gray-800 placeholder-gray-500
+                               py-2 sm:py-2.5 px-4 sm:px-6 rounded-full
+                               focus:outline-none focus:ring-2 focus:ring-black/30
+                               text-xs sm:text-sm font-semibold shadow-inner transition">
+                    <input id="login-confirm-password" type="password" placeholder="Konfirmasi Kata Sandi"
+                        class="hidden w-full bg-[#d1d1d1] text-gray-800 placeholder-gray-500
+                               py-2 sm:py-2.5 px-4 sm:px-6 rounded-full
+                               focus:outline-none focus:ring-2 focus:ring-black/30
+                               text-xs sm:text-sm font-semibold shadow-inner transition">
+                </div>
+
+                <div class="flex justify-start">
+                    <button id="mulai-btn"
+                            class="bg-black hover:bg-gray-900 active:scale-95 text-white
+                                   px-6 sm:px-8 py-2 rounded-xl text-[10px] sm:text-xs
+                                   font-bold tracking-wider shadow-lg transition-all duration-200">
+                        Mulai
+                    </button>
                 </div>
             </div>
-            <div class="absolute bottom-0 right-0 w-[240px] md:w-[280px] h-[320px] md:h-[360px] pointer-events-none select-none flex items-end justify-end">
-                <img src="https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop" alt="Ilustrasi Masuk"
-                    class="w-full h-full object-cover object-top rounded-tl-[120px] border-l-4 border-t-4 border-[#1c1c1c] shadow-2xl">
+
+            <!-- Ilustrasi pojok — disembunyikan di mobile -->
+            <div class="hidden sm:flex absolute bottom-0 right-0 w-[240px] md:w-[280px] h-[320px] md:h-[360px] pointer-events-none select-none items-end justify-end">
+                <img src="https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=600&auto=format&fit=crop"
+                     alt="Ilustrasi Masuk"
+                     class="w-full h-full object-cover object-top rounded-tl-[120px] border-l-4 border-t-4 border-[#1c1c1c] shadow-2xl">
             </div>
         </div>
     </div>
 
+
     <!-- ==================== MODAL TULIS ==================== -->
-    <div id="modal-tulis" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-6 opacity-0 pointer-events-none transition-all duration-200">
-        <div id="modal-card" class="bg-[#1c1c1c] text-white w-full max-w-4xl rounded-[24px] p-8 md:p-10 shadow-2xl flex flex-col justify-between relative transform scale-95 transition-all duration-200 min-h-[550px] border border-white/5">
-            <button id="tutup-modal" class="absolute top-5 right-7 text-white/40 hover:text-white hover:scale-110 text-3xl font-light transition duration-150 focus:outline-none z-10">&times;</button>
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch flex-grow mt-2">
-                <!-- Kolom Kiri -->
-                <div class="md:col-span-5 flex flex-col justify-between gap-6">
+    <div id="modal-tulis"
+         class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-end sm:items-center justify-center
+                p-0 sm:p-6 opacity-0 pointer-events-none transition-all duration-200">
+        <div id="modal-card"
+             class="bg-[#1c1c1c] text-white w-full sm:max-w-4xl
+                    rounded-t-[24px] sm:rounded-[24px]
+                    p-5 sm:p-10 shadow-2xl flex flex-col relative
+                    transform translate-y-4 sm:translate-y-0 sm:scale-95
+                    transition-all duration-200 border border-white/5
+                    overflow-y-auto no-scrollbar"
+             style="max-height:92vh;">
+
+            <button id="tutup-modal"
+                    class="absolute top-4 right-5 text-white/40 hover:text-white text-3xl font-light transition focus:outline-none z-10">
+                &times;
+            </button>
+
+            <div class="flex flex-col sm:grid sm:grid-cols-12 gap-5 sm:gap-8 flex-grow mt-1">
+
+                <!-- Kolom Kiri: Judul + Gambar -->
+                <div class="sm:col-span-5 flex flex-col gap-4 sm:gap-6">
                     <div>
-                        <h2 class="text-4xl font-serif tracking-wide mb-8 font-medium">Tulis Artikel Baru</h2>
-                        <div class="w-full">
-                            <label class="text-[10px] text-white/40 uppercase tracking-widest font-sans font-bold block mb-2">Judul Artikel</label>
-                            <input id="input-judul" type="text" placeholder="Tulis judul yang memikat..."
-                                class="w-full bg-white text-gray-800 py-2.5 px-6 rounded-full focus:outline-none focus:ring-2 focus:ring-red-950/40 text-sm font-semibold shadow-inner transition duration-150">
-                        </div>
+                        <h2 class="text-2xl sm:text-4xl font-serif tracking-wide mb-4 sm:mb-8 font-medium">Tulis Artikel</h2>
+                        <label class="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest font-sans font-bold block mb-1.5">Judul Artikel</label>
+                        <input id="input-judul" type="text" placeholder="Tulis judul yang memikat..."
+                            class="w-full bg-white text-gray-800 py-2 sm:py-2.5 px-4 sm:px-6 rounded-full
+                                   focus:outline-none focus:ring-2 focus:ring-red-950/40
+                                   text-xs sm:text-sm font-semibold shadow-inner transition">
                     </div>
-                    <div class="flex flex-col items-center md:items-start justify-end flex-grow pb-2">
-                        <label class="text-[10px] text-white/40 uppercase tracking-widest font-sans font-bold block mb-2 self-start">Gambar Sampul</label>
-                        <div id="pilih-gambar-trigger" class="w-full h-40 bg-[#e5e5e5] hover:bg-[#dbdbdb] rounded-[20px] flex flex-col items-center justify-center cursor-pointer transition-all duration-200 overflow-hidden relative shadow-md group">
-                            <div id="placeholder-container" class="flex flex-col items-center text-center px-4 transition duration-200 group-hover:scale-105">
-                                <svg class="w-10 h-10 text-gray-500 mb-2" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+
+                    <!-- Gambar Sampul -->
+                    <div>
+                        <label class="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest font-sans font-bold block mb-1.5">Gambar Sampul</label>
+                        <div id="pilih-gambar-trigger"
+                             class="w-full h-28 sm:h-40 bg-[#e5e5e5] hover:bg-[#dbdbdb] rounded-[14px] sm:rounded-[20px]
+                                    flex flex-col items-center justify-center cursor-pointer transition-all overflow-hidden relative shadow-md group">
+                            <div id="placeholder-container" class="flex flex-col items-center text-center px-4 group-hover:scale-105 transition">
+                                <svg class="w-7 h-7 sm:w-10 sm:h-10 text-gray-500 mb-1.5" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/>
                                 </svg>
-                                <span class="text-gray-600 text-[10px] tracking-widest uppercase font-sans font-bold">Unggah Gambar (JPG/PNG)</span>
+                                <span class="text-gray-600 text-[9px] sm:text-[10px] tracking-widest uppercase font-sans font-bold">Unggah Gambar</span>
                             </div>
                             <img id="preview-gambar" class="hidden absolute inset-0 w-full h-full object-cover">
                         </div>
                         <input type="file" id="file-input" accept="image/*" class="hidden">
                     </div>
                 </div>
-                <!-- Kolom Kanan -->
-                <div class="md:col-span-7 flex flex-col justify-between gap-4">
-                    <div class="h-full flex flex-col">
-                        <label class="text-[10px] text-white/40 uppercase tracking-widest font-sans font-bold block mb-2">Isi Konten Cerita</label>
-                        <textarea id="input-konten" placeholder="Tuliskan cerita atau konten tulisan Anda secara mengalir di sini..."
-                            class="w-full flex-grow bg-white text-gray-800 rounded-[15px] p-6 focus:outline-none focus:ring-2 focus:ring-red-950/40 resize-none text-sm leading-relaxed no-scrollbar shadow-inner min-h-[300px] placeholder-gray-400"></textarea>
-                    </div>
-                    <div class="flex justify-end mt-1">
-                        <button id="upload-btn" class="bg-[#2d0707] hover:bg-[#450d0d] active:scale-95 text-white px-10 py-2.5 rounded-full text-xs font-bold tracking-wider shadow-lg transition-all duration-200">
+
+                <!-- Kolom Kanan: Konten + Upload -->
+                <div class="sm:col-span-7 flex flex-col gap-3 sm:gap-4">
+                    <label class="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest font-sans font-bold block mb-1">Isi Konten Cerita</label>
+                    <textarea id="input-konten"
+                              placeholder="Tuliskan cerita Anda di sini..."
+                              class="w-full bg-white text-gray-800 rounded-[12px] sm:rounded-[15px]
+                                     p-4 sm:p-6 focus:outline-none focus:ring-2 focus:ring-red-950/40
+                                     resize-none text-xs sm:text-sm leading-relaxed no-scrollbar shadow-inner
+                                     min-h-[140px] sm:min-h-[300px] placeholder-gray-400 flex-grow"></textarea>
+                    <div class="flex justify-end">
+                        <button id="upload-btn"
+                                class="bg-[#2d0707] hover:bg-[#450d0d] active:scale-95 text-white
+                                       px-7 sm:px-10 py-2 sm:py-2.5 rounded-full
+                                       text-[10px] sm:text-xs font-bold tracking-wider shadow-lg transition-all duration-200">
                             Upload Cerita
                         </button>
                     </div>
@@ -193,20 +325,46 @@
         </div>
     </div>
 
+
     <!-- ==================== MODAL BACA ==================== -->
-    <div id="modal-baca" class="fixed inset-0 bg-black/90 backdrop-blur-xl z-[60] flex items-center justify-center p-0 md:p-6 opacity-0 pointer-events-none transition-all duration-300 overflow-y-auto no-scrollbar">
-        <div id="modal-baca-card" class="bg-[#1c1c1c] text-white w-full h-full md:h-[90vh] md:max-w-4xl md:rounded-[32px] shadow-2xl flex flex-col relative transform scale-95 translate-y-4 transition-all duration-300 overflow-hidden border border-white/5">
-            <button id="tutup-baca" class="absolute top-6 right-8 text-white/50 hover:text-white hover:scale-110 text-4xl font-light transition duration-150 focus:outline-none z-50 drop-shadow-lg">&times;</button>
-            <div class="flex-grow overflow-y-auto no-scrollbar pb-16">
-                <div class="w-full h-64 md:h-[380px] relative">
+    <div id="modal-baca"
+         class="fixed inset-0 bg-black/90 backdrop-blur-xl z-[60] flex items-end sm:items-center justify-center
+                p-0 sm:p-6 opacity-0 pointer-events-none transition-all duration-300 overflow-y-auto no-scrollbar">
+        <div id="modal-baca-card"
+             class="bg-[#1c1c1c] text-white w-full h-full sm:h-[90vh] sm:max-w-4xl
+                    rounded-t-[24px] sm:rounded-[32px]
+                    shadow-2xl flex flex-col relative
+                    transform scale-95 translate-y-4 transition-all duration-300
+                    overflow-hidden border border-white/5">
+
+            <button id="tutup-baca"
+                    class="absolute top-4 sm:top-6 right-5 sm:right-8 text-white/50 hover:text-white
+                           text-3xl sm:text-4xl font-light transition focus:outline-none z-50 drop-shadow-lg">
+                &times;
+            </button>
+
+            <div class="flex-grow overflow-y-auto no-scrollbar pb-10 sm:pb-16">
+                <!-- Gambar Header -->
+                <div class="modal-baca-img w-full h-44 sm:h-[380px] relative">
                     <img id="baca-gambar" src="" alt="Header Cerita" class="w-full h-full object-cover">
                     <div class="absolute inset-0 bg-gradient-to-t from-[#1c1c1c] via-[#1c1c1c]/40 to-transparent"></div>
                 </div>
-                <div class="max-w-2xl mx-auto px-6 md:px-8 -mt-16 relative z-10">
-                    <span id="baca-author" class="text-xs uppercase tracking-widest font-sans font-bold text-red-400 bg-red-950/40 px-3 py-1 rounded-full border border-red-900/30">Oleh Author</span>
-                    <h1 id="baca-judul" class="text-4xl md:text-5xl font-serif tracking-wide mt-4 mb-6 leading-tight font-medium drop-shadow-md">Judul Artikel</h1>
-                    <div class="w-16 h-0.5 bg-white/20 mb-8"></div>
-                    <p id="baca-konten" class="text-white/85 font-serif text-lg leading-relaxed md:leading-loose text-justify whitespace-pre-wrap">
+
+                <div class="max-w-2xl mx-auto px-4 sm:px-8 -mt-10 sm:-mt-16 relative z-10">
+                    <span id="baca-author"
+                          class="text-[10px] sm:text-xs uppercase tracking-widest font-sans font-bold
+                                 text-red-400 bg-red-950/40 px-2.5 sm:px-3 py-1 rounded-full border border-red-900/30">
+                        Oleh Author
+                    </span>
+                    <h1 id="baca-judul"
+                        class="text-2xl sm:text-4xl md:text-5xl font-serif tracking-wide mt-3 sm:mt-4 mb-4 sm:mb-6
+                               leading-tight font-medium drop-shadow-md">
+                        Judul Artikel
+                    </h1>
+                    <div class="w-12 sm:w-16 h-0.5 bg-white/20 mb-5 sm:mb-8"></div>
+                    <p id="baca-konten"
+                       class="text-white/85 font-serif text-base sm:text-lg leading-relaxed sm:leading-loose
+                              text-justify whitespace-pre-wrap">
                         Cerita mengalir indah di sini...
                     </p>
                 </div>
@@ -214,8 +372,9 @@
         </div>
     </div>
 
-    <!-- Script: koneksi dulu, baru logika utama -->
-    <script src="js/koneksi.js"></script>
-    <script src="js/main.js"></script>
+
+    <!-- Script -->
+    <script src="../js/koneksi.js"></script>
+    <script src="../js/main.js"></script>
 </body>
 </html>
