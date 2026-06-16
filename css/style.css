@@ -1,17 +1,118 @@
-*/
-body, input, textarea, button, select {
-    font-family: 'Lora', serif;
+/* ============================================================
+   Blog Minimalis — style.css
+   ============================================================ */
+
+/* ---- Reset & Base ---- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-/* ---- Latar Belakang Video ---- */
+html, body {
+    min-height: 100vh;
+    min-height: 100dvh; /* Untuk mobile viewport yang lebih baik */
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Lora', serif;
+    background-color: #000000;
+    position: relative;
+}
+
+/* ---- Latar Belakang Video - FIXED & STABLE ---- */
 .bg-video {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* Untuk mobile */
     object-fit: cover;
+    z-index: -2;
+    pointer-events: none;
+    
+    /* Mencegah scrolling effect pada mobile */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+    
+    /* Optimasi performa */
+    will-change: transform;
+    
+    /* Mencegah gesture scroll mempengaruhi video */
+    touch-action: none;
+}
+
+/* ---- Overlay gelap di atas video untuk readability ---- */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background: rgba(0, 0, 0, 0.5);
     z-index: -1;
+    pointer-events: none;
+    
+    /* Mencegah scrolling effect */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+/* ---- Fallback untuk browser yang tidak support video ---- */
+.bg-video::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    background: radial-gradient(ellipse at center, #1a1a1a 0%, #000000 100%);
+    z-index: -3;
+}
+
+/* ---- Scrollbar custom ---- */
+::-webkit-scrollbar {
+    width: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Smooth scroll ---- */
+html {
+    scroll-behavior: smooth;
+}
+
+/* ---- No Scrollbar untuk elemen tertentu ---- */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* ---- Efek Hover Kartu Blog ---- */
@@ -22,15 +123,6 @@ body, input, textarea, button, select {
     transform: scale(1.03);
 }
 
-/* ---- Sembunyikan Scrollbar ---- */
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
-}
-.no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
 /* ---- Animasi Spinner Loading ---- */
 @keyframes spin-slow {
     0%   { transform: rotate(0deg); }
@@ -38,4 +130,108 @@ body, input, textarea, button, select {
 }
 .animate-spin-slow {
     animation: spin-slow 1.5s linear infinite;
+}
+
+/* ---- Fix untuk mobile Safari (iOS) ---- */
+@supports (-webkit-touch-callout: none) {
+    .bg-video {
+        height: 100vh;
+        /* Fallback untuk iOS yang tidak support 100dvh */
+    }
+}
+
+/* ---- Fix untuk Android Chrome ---- */
+@supports (-webkit-appearance: none) and (not (overflow: -webkit-marquee)) {
+    .bg-video {
+        height: 100vh;
+    }
+}
+
+/* ---- Responsive fix untuk semua device ---- */
+@media (max-width: 768px) {
+    .bg-video {
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+    
+    body::before {
+        width: 100%;
+        height: 100%;
+    }
+}
+
+/* ---- Landscape mode fix ---- */
+@media (orientation: landscape) and (max-height: 500px) {
+    .bg-video {
+        height: 100vh;
+        width: 100vw;
+    }
+}
+
+/* ---- Tablet & Desktop ---- */
+@media (min-width: 769px) {
+    .bg-video {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        min-width: 100vw;
+        min-height: 100vh;
+        transform: translate(-50%, -50%) translateZ(0);
+        -webkit-transform: translate(-50%, -50%) translateZ(0);
+        width: auto;
+        height: auto;
+    }
+}
+
+/* ---- Loading Screen ---- */
+#page-loader {
+    position: fixed;
+    inset: 0;
+    background: #1c1c1c;
+    z-index: 99;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease-in-out;
+}
+
+/* ---- Blog Card - Tambahan untuk mobile ---- */
+.blog-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 640px) {
+    .blog-card {
+        padding: 10px;
+        border-radius: 16px;
+    }
+}
+
+/* ---- Modal Fix untuk mobile ---- */
+@media (max-width: 640px) {
+    #modal-baca-card,
+    #modal-card,
+    #modal-profil-card,
+    #modal-masuk-card {
+        border-radius: 20px 20px 0 0 !important;
+        max-height: 95vh !important;
+    }
+}
+
+/* ---- Prevent zoom on input focus (mobile) ---- */
+@media (max-width: 768px) {
+    input, textarea, select, button {
+        font-size: 16px !important;
+    }
 }
