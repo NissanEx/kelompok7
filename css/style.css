@@ -1,0 +1,41 @@
+*/
+body, input, textarea, button, select {
+    font-family: 'Lora', serif;
+}
+
+/* ---- Latar Belakang Video ---- */
+.bg-video {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -1;
+}
+
+/* ---- Efek Hover Kartu Blog ---- */
+.hover-effect {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.hover-effect:hover {
+    transform: scale(1.03);
+}
+
+/* ---- Sembunyikan Scrollbar ---- */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* ---- Animasi Spinner Loading ---- */
+@keyframes spin-slow {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+    animation: spin-slow 1.5s linear infinite;
+}
