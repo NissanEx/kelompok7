@@ -1,11 +1,6 @@
-// ============================================================
-//  Blog Minimalis — koneksi.js
-//  Konfigurasi & inisialisasi Supabase
-//  Ganti SUPABASE_URL dan SUPABASE_ANON_KEY dengan milik Anda
-// ============================================================
 
-const SUPABASE_URL     = "https://ryljgklbnqdglirmvmzk.supabase.co";   // Contoh: "https://xyzabcde.supabase.co"
-const SUPABASE_ANON_KEY = "sb_publishable_yNPzZbvozHXAvPUG2ESFaA_jSHiw1wU";  // Contoh: "eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+const SUPABASE_URL     = "https://ryljgklbnqdglirmvmzk.supabase.co"; 
+const SUPABASE_ANON_KEY = "sb_publishable_yNPzZbvozHXAvPUG2ESFaA_jSHiw1wU";  
 
 let supabaseClient   = null;
 let isSupabaseActive = false;
