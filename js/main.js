@@ -1,7 +1,6 @@
 // ============================================================
-//  Blog Minimalis — main.js (Revisi)
-//  Logika utama: render blog, auth, profil, upload, modal, edit, hapus
-//  Bergantung pada: koneksi.js (supabaseClient, isSupabaseActive)
+//  Blog Minimalis — main.js (REVISI FINAL)
+//  Perbaikan: Update & Hapus artikel
 // ============================================================
 
 /* ---- State Global ---- */
@@ -10,7 +9,7 @@ let currentUser      = null;
 let currentUserUid   = null;
 let profileBioText   = "Saya menyukai keindahan kata-kata dan visual minimalis.";
 let profileAvatarData = "";
-let editingPostId    = null; // ID post yang sedang diedit
+let editingPostId    = null;
 
 /* ================================================================
    FUNGSI: Cek koneksi Supabase dengan timeout
@@ -24,6 +23,19 @@ async function waitForSupabase(timeout = 5000) {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
     return false;
+}
+
+/* ================================================================
+   FUNGSI: Cek apakah user adalah pemilik artikel
+   ================================================================ */
+function isArticleOwner(blog) {
+    if (!currentUser) return false;
+    
+    // Ambil username dari email
+    const currentUsername = currentUser.includes('@') ? currentUser.split('@')[0] : currentUser;
+    
+    // Cek apakah author sama dengan currentUser atau username
+    return blog.author === currentUser || blog.author === currentUsername;
 }
 
 /* ================================================================
@@ -41,6 +53,7 @@ window.onload = async function () {
     if (savedUser && savedUid) {
         currentUser = savedUser;
         currentUserUid = savedUid;
+        console.log('✅ User ditemukan di session:', currentUser);
     }
 
     // Tunggu Supabase siap
@@ -122,9 +135,11 @@ function updateUserUI() {
     if (currentUser) {
         if (masukBtn) masukBtn.innerText = `Keluar (${currentUser.split('@')[0]})`;
         if (profilBtn) profilBtn.classList.remove('hidden');
+        console.log('👤 User login:', currentUser);
     } else {
         if (masukBtn) masukBtn.innerText = "Masuk";
         if (profilBtn) profilBtn.classList.add('hidden');
+        console.log('👤 Tidak ada user login');
     }
 }
 
@@ -148,6 +163,11 @@ async function muatDataBlogs() {
         if (error) throw error;
         activeBlogs = data || [];
         console.log(`✅ Memuat ${activeBlogs.length} artikel dari Supabase`);
+        
+        // Debug: Tampilkan author dari setiap artikel
+        activeBlogs.forEach(blog => {
+            console.log(`📝 "${blog.judul}" oleh ${blog.author}`);
+        });
     } catch (err) {
         console.error("Gagal mengambil data dari Supabase:", err);
         tampilkanNotifikasi("Gagal memuat data dari database", "#4a0e0e", "red");
@@ -193,8 +213,9 @@ function renderBlog(filterQuery = '') {
         const gridClass = isThird ? "md:col-span-2 md:justify-self-center md:mt-6" : "";
         
         // Cek apakah user adalah pemilik artikel
-        const isOwner = currentUser && (blog.author === currentUser.split('@')[0] || 
-                                        blog.author === currentUser);
+        const isOwner = isArticleOwner(blog);
+        
+        console.log(`🔍 "${blog.judul}" - isOwner: ${isOwner}, currentUser: ${currentUser}, author: ${blog.author}`);
 
         blogContainer.insertAdjacentHTML('beforeend', `
             <div class="blog-card flex flex-row items-center gap-3 sm:gap-5 w-full max-w-md hover-effect ${gridClass} text-white relative">
@@ -214,11 +235,11 @@ function renderBlog(filterQuery = '') {
                         </button>
                         ${isOwner ? `
                             <button onclick="editArtikel(${blog.id})"
-                                    class="btn-edit">
+                                    class="btn-edit text-xs text-white/60 hover:text-white transition-colors">
                                 ✎ Edit
                             </button>
                             <button onclick="hapusArtikel(${blog.id})"
-                                    class="btn-hapus">
+                                    class="btn-hapus text-xs text-red-400/60 hover:text-red-400 transition-colors">
                                 ✕ Hapus
                             </button>
                         ` : ''}
@@ -230,25 +251,27 @@ function renderBlog(filterQuery = '') {
 }
 
 /* ================================================================
-   FUNGSI: Edit Artikel
+   FUNGSI: Edit Artikel (PERBAIKAN)
    ================================================================ */
 function editArtikel(id) {
+    console.log('✏️ Edit artikel ID:', id);
+    
     const blog = activeBlogs.find(b => b.id === id);
     if (!blog) {
         tampilkanNotifikasi("Artikel tidak ditemukan", "#4a0e0e", "red");
         return;
     }
 
-    // Cek kepemilikan
-    const isOwner = currentUser && (blog.author === currentUser.split('@')[0] || 
-                                    blog.author === currentUser);
-    if (!isOwner) {
+    // Cek kepemilikan dengan fungsi yang konsisten
+    if (!isArticleOwner(blog)) {
         tampilkanNotifikasi("Anda tidak memiliki izin untuk mengedit artikel ini", "#4a0e0e", "red");
+        console.warn('❌ Bukan pemilik artikel. Current user:', currentUser, 'Author:', blog.author);
         return;
     }
 
     // Set state editing
     editingPostId = id;
+    console.log('✅ Edit mode aktif untuk ID:', editingPostId);
     
     // Isi form dengan data artikel
     const inputJudul = document.getElementById('input-judul');
@@ -278,20 +301,21 @@ function editArtikel(id) {
 }
 
 /* ================================================================
-   FUNGSI: Hapus Artikel
+   FUNGSI: Hapus Artikel (PERBAIKAN)
    ================================================================ */
 async function hapusArtikel(id) {
+    console.log('🗑️ Hapus artikel ID:', id);
+    
     const blog = activeBlogs.find(b => b.id === id);
     if (!blog) {
         tampilkanNotifikasi("Artikel tidak ditemukan", "#4a0e0e", "red");
         return;
     }
 
-    // Cek kepemilikan
-    const isOwner = currentUser && (blog.author === currentUser.split('@')[0] || 
-                                    blog.author === currentUser);
-    if (!isOwner) {
+    // Cek kepemilikan dengan fungsi yang konsisten
+    if (!isArticleOwner(blog)) {
         tampilkanNotifikasi("Anda tidak memiliki izin untuk menghapus artikel ini", "#4a0e0e", "red");
+        console.warn('❌ Bukan pemilik artikel. Current user:', currentUser, 'Author:', blog.author);
         return;
     }
 
@@ -306,17 +330,25 @@ async function hapusArtikel(id) {
     }
 
     try {
+        console.log('🚀 Menghapus artikel ID:', id);
+        
         const { error } = await supabaseClient
             .from('posts')
             .delete()
             .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Error dari Supabase:', error);
+            throw error;
+        }
         
+        console.log('✅ Artikel berhasil dihapus');
         tampilkanNotifikasi(`Artikel "${blog.judul}" berhasil dihapus`, "#0e4a2e", "green");
+        
+        // Refresh data
         await muatDataBlogs();
     } catch (err) {
-        console.error("Gagal menghapus artikel:", err);
+        console.error("❌ Gagal menghapus artikel:", err);
         tampilkanNotifikasi("Gagal menghapus artikel: " + err.message, "#4a0e0e", "red");
     }
 }
@@ -557,7 +589,7 @@ function pasangEventListeners() {
                 masukBtn.innerText = "Masuk";
                 if (profilBtn) profilBtn.classList.add('hidden');
                 tampilkanNotifikasi("Anda berhasil keluar!", "#0e4a2e", "green");
-                await muatDataBlogs(); // Refresh untuk menghilangkan tombol edit/hapus
+                await muatDataBlogs();
                 return;
             }
             if (!isSupabaseActive) {
@@ -611,8 +643,14 @@ function pasangEventListeners() {
             try {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailOrUser, password });
                 if (error) throw error;
-                currentUser    = data.user.email;
+                
+                // PERBAIKAN: Simpan user data dengan benar
+                currentUser = data.user.email;
                 currentUserUid = data.user.id;
+                
+                console.log('✅ Login berhasil:', currentUser);
+                console.log('🆔 User ID:', currentUserUid);
+                
                 sessionStorage.setItem('blogUser', currentUser);
                 sessionStorage.setItem('blogUid', currentUserUid);
                 
@@ -621,8 +659,9 @@ function pasangEventListeners() {
                 await sinkronkanProfilSupabase();
                 closeMasukModal();
                 tampilkanNotifikasi(`Selamat datang kembali, ${currentUser.split('@')[0]}!`, "#0e4a2e", "green");
-                await muatDataBlogs(); // Refresh untuk menampilkan tombol edit/hapus
+                await muatDataBlogs();
             } catch (err) {
+                console.error('❌ Login error:', err);
                 tampilkanNotifikasi(err.message, "#4a0e0e", "red");
             }
         });
@@ -640,9 +679,8 @@ function pasangEventListeners() {
             if (profileDisplayName) profileDisplayName.value = currentUser;
             if (profileBio) profileBio.value = profileBioText;
 
-            const postsCount = activeBlogs.filter(b =>
-                b.author === currentUser || b.author === (currentUser || '').split('@')[0]
-            ).length;
+            // PERBAIKAN: Hitung jumlah artikel dengan fungsi yang konsisten
+            const postsCount = activeBlogs.filter(b => isArticleOwner(b)).length;
             if (profileStatPosts) profileStatPosts.innerText = postsCount;
 
             if (modalProfil) {
@@ -791,7 +829,7 @@ function pasangEventListeners() {
         });
     }
 
-    /* ---- Upload / Update Artikel ---- */
+    /* ---- Upload / Update Artikel (PERBAIKAN) ---- */
     if (uploadBtn) {
         uploadBtn.addEventListener('click', async () => {
             if (!isSupabaseActive) {
@@ -824,6 +862,8 @@ function pasangEventListeners() {
             try {
                 if (editingPostId) {
                     // MODE EDIT: Update artikel yang ada
+                    console.log('🔄 Mengupdate artikel ID:', editingPostId);
+                    
                     const { error } = await supabaseClient
                         .from('posts')
                         .update({
@@ -835,10 +875,17 @@ function pasangEventListeners() {
                         })
                         .eq('id', editingPostId);
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('❌ Error update:', error);
+                        throw error;
+                    }
+                    
+                    console.log('✅ Artikel berhasil diupdate');
                     tampilkanNotifikasi("Artikel berhasil diperbarui!", "#0e4a2e", "green");
                 } else {
                     // MODE TAMBAH: Buat artikel baru
+                    console.log('📝 Membuat artikel baru');
+                    
                     const postObj = {
                         judul,
                         author:    authorName,
@@ -849,11 +896,16 @@ function pasangEventListeners() {
                     };
 
                     const { error } = await supabaseClient.from('posts').insert([postObj]);
-                    if (error) throw error;
+                    if (error) {
+                        console.error('❌ Error insert:', error);
+                        throw error;
+                    }
+                    
+                    console.log('✅ Artikel berhasil dibuat');
                     tampilkanNotifikasi("Cerita berhasil dipos ke Supabase!", "#0e4a2e", "green");
                 }
             } catch (err) {
-                console.error("Gagal menyimpan artikel:", err);
+                console.error("❌ Gagal menyimpan artikel:", err);
                 tampilkanNotifikasi("Gagal menyimpan: " + err.message, "#4a0e0e", "red");
             }
 
