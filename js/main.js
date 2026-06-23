@@ -1,15 +1,17 @@
 // ============================================================
-//  Blog Minimalis — main.js (REVISI FINAL)
-//  Perbaikan: Update & Hapus artikel
+//  Blog Minimalis — main.js (REVISI LENGKAP)
+//  Perbaikan: Edit & Hapus artikel benar-benar update database
+//  + handler upload-btn (insert vs update) yang sebelumnya hilang
 // ============================================================
 
 /* ---- State Global ---- */
-let activeBlogs      = [];
-let currentUser      = null;
-let currentUserUid   = null;
-let profileBioText   = "Saya menyukai keindahan kata-kata dan visual minimalis.";
+let activeBlogs       = [];
+let currentUser       = null;   // email user yang login
+let currentUserUid    = null;   // UUID dari Supabase Auth
+let profileBioText    = "Saya menyukai keindahan kata-kata dan visual minimalis.";
 let profileAvatarData = "";
-let editingPostId    = null;
+let editingPostId     = null;   // null = mode tambah baru, isi = mode edit
+let selectedImageBase64 = null; // gambar sampul yang dipilih di modal tulis
 
 /* ================================================================
    FUNGSI: Cek koneksi Supabase dengan timeout
@@ -30,39 +32,43 @@ async function waitForSupabase(timeout = 5000) {
    ================================================================ */
 function isArticleOwner(blog) {
     if (!currentUser) return false;
-    
+
     // Ambil username dari email
     const currentUsername = currentUser.includes('@') ? currentUser.split('@')[0] : currentUser;
-    
-    // Cek apakah author sama dengan currentUser atau username
-    return blog.author === currentUser || blog.author === currentUsername;
+
+    // Cek apakah author sama dengan currentUser, username, atau UID
+    return (
+        blog.author === currentUser ||
+        blog.author === currentUsername ||
+        (currentUserUid && blog.user_id === currentUserUid)
+    );
 }
 
 /* ================================================================
    INISIALISASI — Dipanggil saat halaman home selesai dimuat
    ================================================================ */
 window.onload = async function () {
-    const pageLoader = document.getElementById('page-loader');
-    const loaderText = document.getElementById('loader-text');
-    const menuBar    = document.getElementById('menu-bar');
-    const menuContent = document.getElementById('menu-content');
+    const pageLoader   = document.getElementById('page-loader');
+    const loaderText   = document.getElementById('loader-text');
+    const menuBar      = document.getElementById('menu-bar');
+    const menuContent  = document.getElementById('menu-content');
 
     // Cek session login
     const savedUser = sessionStorage.getItem('blogUser');
     const savedUid  = sessionStorage.getItem('blogUid');
     if (savedUser && savedUid) {
-        currentUser = savedUser;
+        currentUser    = savedUser;
         currentUserUid = savedUid;
         console.log('✅ User ditemukan di session:', currentUser);
     }
 
     // Tunggu Supabase siap
     const supabaseReady = await waitForSupabase();
-    
+
     if (!supabaseReady || !isSupabaseActive) {
         if (loaderText) loaderText.innerText = "Koneksi database gagal";
         tampilkanNotifikasi("Database tidak tersedia. Silakan refresh halaman.", "#4a0e0e", "red");
-        
+
         const blogContainer = document.getElementById('blog-container');
         if (blogContainer) {
             blogContainer.innerHTML = `
@@ -71,30 +77,24 @@ window.onload = async function () {
                     <p class="text-sm text-white/40 mt-2">Periksa koneksi internet dan refresh halaman</p>
                 </div>`;
         }
-        
+
         setTimeout(() => {
-            if (pageLoader) {
-                pageLoader.classList.add('opacity-0', 'pointer-events-none');
-            }
+            if (pageLoader) pageLoader.classList.add('opacity-0', 'pointer-events-none');
         }, 500);
         return;
     }
 
-    if (loaderText) {
-        loaderText.innerText = "Memuat data dari Supabase...";
-    }
+    if (loaderText) loaderText.innerText = "Memuat data dari Supabase...";
 
     await muatDataBlogs();
 
     // 1. Splash screen memudar (500ms)
     setTimeout(() => {
-        if (pageLoader) {
-            pageLoader.classList.add('opacity-0', 'pointer-events-none');
-        }
+        if (pageLoader) pageLoader.classList.add('opacity-0', 'pointer-events-none');
         tampilkanNotifikasi("Terhubung dengan database Supabase", "#0e4a2e", "green");
     }, 500);
 
-    // 2. Pill muncul dari atas — kecil & tanpa konten (700ms)
+    // 2. Pill muncul dari atas (700ms)
     setTimeout(() => {
         if (menuBar) {
             menuBar.classList.remove('opacity-0', '-translate-y-6');
@@ -110,7 +110,7 @@ window.onload = async function () {
         }
     }, 1050);
 
-    // 4. Konten fade in setelah navbar lebar sepenuhnya (1800ms)
+    // 4. Konten fade in (1800ms)
     setTimeout(() => {
         if (menuContent) {
             menuContent.classList.remove('opacity-0', 'pointer-events-none');
@@ -118,10 +118,12 @@ window.onload = async function () {
         }
     }, 1800);
 
-    // Update UI untuk user yang login
     updateUserUI();
 
-    // Pasang semua event listener setelah DOM siap
+    if (currentUserUid) {
+        await sinkronkanProfilSupabase();
+    }
+
     pasangEventListeners();
 };
 
@@ -129,9 +131,9 @@ window.onload = async function () {
    FUNGSI: Update UI berdasarkan status login
    ================================================================ */
 function updateUserUI() {
-    const masukBtn = document.getElementById('masuk-btn');
+    const masukBtn  = document.getElementById('masuk-btn');
     const profilBtn = document.getElementById('profil-btn');
-    
+
     if (currentUser) {
         if (masukBtn) masukBtn.innerText = `Keluar (${currentUser.split('@')[0]})`;
         if (profilBtn) profilBtn.classList.remove('hidden');
@@ -163,17 +165,27 @@ async function muatDataBlogs() {
         if (error) throw error;
         activeBlogs = data || [];
         console.log(`✅ Memuat ${activeBlogs.length} artikel dari Supabase`);
-        
-        // Debug: Tampilkan author dari setiap artikel
+
         activeBlogs.forEach(blog => {
             console.log(`📝 "${blog.judul}" oleh ${blog.author}`);
         });
+
+        // Update statistik jumlah post milik user di modal profil (kalau lagi terbuka)
+        updateStatistikProfil();
+
     } catch (err) {
         console.error("Gagal mengambil data dari Supabase:", err);
         tampilkanNotifikasi("Gagal memuat data dari database", "#4a0e0e", "red");
         activeBlogs = [];
     }
     renderBlog();
+}
+
+function updateStatistikProfil() {
+    const profileStatPosts = document.getElementById('profile-stat-posts');
+    if (!profileStatPosts || !currentUser) return;
+    const jumlah = activeBlogs.filter(b => isArticleOwner(b)).length;
+    profileStatPosts.innerText = jumlah;
 }
 
 /* ================================================================
@@ -211,10 +223,9 @@ function renderBlog(filterQuery = '') {
     filteredBlog.forEach((blog, index) => {
         const isThird   = (index % 3 === 2);
         const gridClass = isThird ? "md:col-span-2 md:justify-self-center md:mt-6" : "";
-        
-        // Cek apakah user adalah pemilik artikel
+
         const isOwner = isArticleOwner(blog);
-        
+
         console.log(`🔍 "${blog.judul}" - isOwner: ${isOwner}, currentUser: ${currentUser}, author: ${blog.author}`);
 
         blogContainer.insertAdjacentHTML('beforeend', `
@@ -251,35 +262,59 @@ function renderBlog(filterQuery = '') {
 }
 
 /* ================================================================
-   FUNGSI: Edit Artikel (PERBAIKAN)
+   FUNGSI: Reset Form Modal Tulis (kembali ke mode tambah baru)
+   ================================================================ */
+function resetFormTulis() {
+    editingPostId = null;
+    selectedImageBase64 = null;
+
+    const inputJudul   = document.getElementById('input-judul');
+    const inputKonten  = document.getElementById('input-konten');
+    const previewGambar = document.getElementById('preview-gambar');
+    const placeholderContainer = document.getElementById('placeholder-container');
+    const uploadBtn = document.getElementById('upload-btn');
+    const fileInput = document.getElementById('file-input');
+
+    if (inputJudul) inputJudul.value = '';
+    if (inputKonten) inputKonten.value = '';
+    if (fileInput) fileInput.value = '';
+    if (previewGambar) {
+        previewGambar.src = '';
+        previewGambar.classList.add('hidden');
+    }
+    if (placeholderContainer) placeholderContainer.classList.remove('hidden');
+    if (uploadBtn) uploadBtn.innerText = 'Upload Cerita';
+}
+
+/* ================================================================
+   FUNGSI: Edit Artikel
    ================================================================ */
 function editArtikel(id) {
     console.log('✏️ Edit artikel ID:', id);
-    
+
     const blog = activeBlogs.find(b => b.id === id);
     if (!blog) {
         tampilkanNotifikasi("Artikel tidak ditemukan", "#4a0e0e", "red");
         return;
     }
 
-    // Cek kepemilikan dengan fungsi yang konsisten
     if (!isArticleOwner(blog)) {
         tampilkanNotifikasi("Anda tidak memiliki izin untuk mengedit artikel ini", "#4a0e0e", "red");
         console.warn('❌ Bukan pemilik artikel. Current user:', currentUser, 'Author:', blog.author);
         return;
     }
 
-    // Set state editing
+    // Set state editing — INI KUNCI supaya tombol upload tahu harus UPDATE bukan INSERT
     editingPostId = id;
+    selectedImageBase64 = null; // gambar lama dipakai kecuali user pilih gambar baru
     console.log('✅ Edit mode aktif untuk ID:', editingPostId);
-    
-    // Isi form dengan data artikel
+
     const inputJudul = document.getElementById('input-judul');
     const inputKonten = document.getElementById('input-konten');
     const previewGambar = document.getElementById('preview-gambar');
     const placeholderContainer = document.getElementById('placeholder-container');
     const uploadBtn = document.getElementById('upload-btn');
-    
+
     if (inputJudul) inputJudul.value = blog.judul;
     if (inputKonten) inputKonten.value = blog.konten;
     if (previewGambar) {
@@ -288,11 +323,10 @@ function editArtikel(id) {
     }
     if (placeholderContainer) placeholderContainer.classList.add('hidden');
     if (uploadBtn) uploadBtn.innerText = "Update Cerita";
-    
-    // Buka modal tulis
+
     const modalTulis = document.getElementById('modal-tulis');
-    const modalCard = document.getElementById('modal-card');
-    
+    const modalCard  = document.getElementById('modal-card');
+
     if (modalTulis) {
         modalTulis.classList.remove('opacity-0', 'pointer-events-none');
         modalTulis.classList.add('opacity-100', 'pointer-events-auto');
@@ -301,25 +335,23 @@ function editArtikel(id) {
 }
 
 /* ================================================================
-   FUNGSI: Hapus Artikel (PERBAIKAN)
+   FUNGSI: Hapus Artikel
    ================================================================ */
 async function hapusArtikel(id) {
     console.log('🗑️ Hapus artikel ID:', id);
-    
+
     const blog = activeBlogs.find(b => b.id === id);
     if (!blog) {
         tampilkanNotifikasi("Artikel tidak ditemukan", "#4a0e0e", "red");
         return;
     }
 
-    // Cek kepemilikan dengan fungsi yang konsisten
     if (!isArticleOwner(blog)) {
         tampilkanNotifikasi("Anda tidak memiliki izin untuk menghapus artikel ini", "#4a0e0e", "red");
         console.warn('❌ Bukan pemilik artikel. Current user:', currentUser, 'Author:', blog.author);
         return;
     }
 
-    // Konfirmasi
     if (!confirm(`Apakah Anda yakin ingin menghapus artikel "${blog.judul}"?`)) {
         return;
     }
@@ -331,21 +363,27 @@ async function hapusArtikel(id) {
 
     try {
         console.log('🚀 Menghapus artikel ID:', id);
-        
-        const { error } = await supabaseClient
+
+        const { error, count } = await supabaseClient
             .from('posts')
-            .delete()
+            .delete({ count: 'exact' })
             .eq('id', id);
 
         if (error) {
             console.error('❌ Error dari Supabase:', error);
             throw error;
         }
-        
+
+        // count === 0 berarti RLS policy menolak walau tanpa error eksplisit
+        if (count === 0) {
+            console.warn('⚠️ Tidak ada baris terhapus. Kemungkinan RLS policy DELETE menolak.');
+            tampilkanNotifikasi("Penghapusan ditolak oleh database (cek RLS policy)", "#4a0e0e", "red");
+            return;
+        }
+
         console.log('✅ Artikel berhasil dihapus');
         tampilkanNotifikasi(`Artikel "${blog.judul}" berhasil dihapus`, "#0e4a2e", "green");
-        
-        // Refresh data
+
         await muatDataBlogs();
     } catch (err) {
         console.error("❌ Gagal menghapus artikel:", err);
@@ -360,13 +398,15 @@ function bukaArtikel(id) {
     const blog = activeBlogs.find(b => b.id === id);
     if (!blog) return;
 
-    document.getElementById('baca-gambar').src        = blog.image;
-    document.getElementById('baca-author').innerText  = `Oleh ${blog.author}`;
-    document.getElementById('baca-judul').innerText   = blog.judul;
-    document.getElementById('baca-konten').innerText  = blog.konten;
+    document.getElementById('baca-gambar').src       = blog.image;
+    document.getElementById('baca-author').innerText = `Oleh ${blog.author}`;
+    document.getElementById('baca-judul').innerText  = blog.judul;
+    document.getElementById('baca-konten').innerText = blog.konten;
 
     const modalBaca     = document.getElementById('modal-baca');
     const modalBacaCard = document.getElementById('modal-baca-card');
+
+    if (!modalBaca || !modalBacaCard) return;
 
     modalBaca.classList.remove('opacity-0', 'pointer-events-none');
     modalBaca.classList.add('opacity-100', 'pointer-events-auto');
@@ -389,11 +429,14 @@ async function sinkronkanProfilSupabase() {
         if (error && error.code !== 'PGRST116') throw error;
 
         if (profile) {
-            profileBioText    = profile.bio       || profileBioText;
+            profileBioText    = profile.bio        || profileBioText;
             profileAvatarData = profile.avatar_url || profileAvatarData;
 
+            const profileBio = document.getElementById('profile-bio');
+            if (profileBio) profileBio.value = profileBioText;
+
             if (profileAvatarData) {
-                const previewAvatar        = document.getElementById('preview-avatar');
+                const previewAvatar         = document.getElementById('preview-avatar');
                 const avatarPlaceholderTeks = document.getElementById('avatar-placeholder-teks');
                 if (previewAvatar) {
                     previewAvatar.src = profileAvatarData;
@@ -435,107 +478,92 @@ function tampilkanNotifikasi(pesan, bg, color) {
 }
 
 /* ================================================================
+   FUNGSI: Logout
+   ================================================================ */
+async function logout() {
+    try {
+        if (isSupabaseActive) {
+            await supabaseClient.auth.signOut();
+        }
+    } catch (err) {
+        console.error("Gagal sign out:", err);
+    }
+    sessionStorage.removeItem('blogUser');
+    sessionStorage.removeItem('blogUid');
+    currentUser = null;
+    currentUserUid = null;
+    updateUserUI();
+    renderBlog(document.getElementById('search-input')?.value || '');
+    tampilkanNotifikasi("Anda telah keluar", "#1c1c1c", "white");
+}
+
+/* ================================================================
    FUNGSI: Pasang Semua Event Listener
    ================================================================ */
 function pasangEventListeners() {
 
     /* ---- Referensi Elemen DOM ---- */
-    const menuBar           = document.getElementById('menu-bar');
-    const menuContent       = document.getElementById('menu-content');
-    const extraMenu         = document.getElementById('extra-menu');
-    const searchInput       = document.getElementById('search-input');
-    const homeBtn           = document.getElementById('home-btn');
-    const masukBtn          = document.getElementById('masuk-btn');
-    const profilBtn         = document.getElementById('profil-btn');
+    const menuBar      = document.getElementById('menu-bar');
+    const menuContent  = document.getElementById('menu-content');
+    const extraMenu    = document.getElementById('extra-menu');
+    const searchInput  = document.getElementById('search-input');
+    const homeBtn      = document.getElementById('home-btn');
+    const masukBtn     = document.getElementById('masuk-btn');
+    const profilBtn    = document.getElementById('profil-btn');
+    const menuToggleBtn = document.getElementById('menu-toggle-btn');
+    const hamTop       = document.getElementById('ham-top');
+    const hamBottom    = document.getElementById('ham-bottom');
 
     // Modal Masuk
-    const modalMasuk        = document.getElementById('modal-masuk');
-    const modalMasukCard    = document.getElementById('modal-masuk-card');
-    const tutupMasuk        = document.getElementById('tutup-masuk');
-    const mulaiBtn          = document.getElementById('mulai-btn');
-    const tabMasuk          = document.getElementById('tab-masuk');
-    const tabDaftar         = document.getElementById('tab-daftar');
-    const loginUsername     = document.getElementById('login-username');
-    const loginPassword     = document.getElementById('login-password');
+    const modalMasuk     = document.getElementById('modal-masuk');
+    const modalMasukCard = document.getElementById('modal-masuk-card');
+    const tutupMasuk      = document.getElementById('tutup-masuk');
+    const mulaiBtn        = document.getElementById('mulai-btn');
+    const tabMasuk        = document.getElementById('tab-masuk');
+    const tabDaftar       = document.getElementById('tab-daftar');
+    const loginUsername   = document.getElementById('login-username');
+    const loginPassword   = document.getElementById('login-password');
     const loginConfirmPassword = document.getElementById('login-confirm-password');
 
     // Modal Profil
-    const modalProfil       = document.getElementById('modal-profil');
-    const modalProfilCard   = document.getElementById('modal-profil-card');
-    const tutupProfil       = document.getElementById('tutup-profil');
-    const simpanProfilBtn   = document.getElementById('simpan-profil-btn');
+    const modalProfil     = document.getElementById('modal-profil');
+    const modalProfilCard = document.getElementById('modal-profil-card');
+    const tutupProfil      = document.getElementById('tutup-profil');
+    const simpanProfilBtn  = document.getElementById('simpan-profil-btn');
     const pilihAvatarTrigger = document.getElementById('pilih-avatar-trigger');
-    const avatarInput       = document.getElementById('avatar-input');
-    const previewAvatar     = document.getElementById('preview-avatar');
+    const avatarInput      = document.getElementById('avatar-input');
+    const previewAvatar    = document.getElementById('preview-avatar');
     const avatarPlaceholderTeks = document.getElementById('avatar-placeholder-teks');
     const profileDisplayName = document.getElementById('profile-display-name');
     const profileBio        = document.getElementById('profile-bio');
-    const profileStatPosts  = document.getElementById('profile-stat-posts');
 
     // Modal Tulis
-    const tulisBtn          = document.getElementById('tulis-btn');
-    const modalTulis        = document.getElementById('modal-tulis');
-    const modalCard         = document.getElementById('modal-card');
-    const tutupModal        = document.getElementById('tutup-modal');
-    const uploadBtn         = document.getElementById('upload-btn');
+    const tulisBtn      = document.getElementById('tulis-btn');
+    const modalTulis     = document.getElementById('modal-tulis');
+    const modalCard      = document.getElementById('modal-card');
+    const tutupModal      = document.getElementById('tutup-modal');
+    const inputJudul       = document.getElementById('input-judul');
+    const inputKonten      = document.getElementById('input-konten');
+    const fileInput        = document.getElementById('file-input');
+    const previewGambar    = document.getElementById('preview-gambar');
     const pilihGambarTrigger = document.getElementById('pilih-gambar-trigger');
-    const fileInput         = document.getElementById('file-input');
-    const previewGambar     = document.getElementById('preview-gambar');
     const placeholderContainer = document.getElementById('placeholder-container');
-    const inputJudul        = document.getElementById('input-judul');
-    const inputKonten       = document.getElementById('input-konten');
+    const uploadBtn         = document.getElementById('upload-btn');
 
     // Modal Baca
-    const tutupBaca         = document.getElementById('tutup-baca');
-    const modalBaca         = document.getElementById('modal-baca');
-    const modalBacaCard     = document.getElementById('modal-baca-card');
+    const modalBaca     = document.getElementById('modal-baca');
+    const modalBacaCard = document.getElementById('modal-baca-card');
+    const tutupBaca      = document.getElementById('tutup-baca');
 
-    let currentTab = 'masuk';
-
-    /* ---- Toggle Dropdown Menu (hamburger) ---- */
-    const menuToggleBtn = document.getElementById('menu-toggle-btn');
-    const hamTop        = document.getElementById('ham-top');
-    const hamBottom     = document.getElementById('ham-bottom');
-
-    function openDropdown() {
-        if (!extraMenu) return;
-        extraMenu.classList.remove('max-h-0', 'opacity-0');
-        extraMenu.classList.add('max-h-32', 'opacity-100');
-        if (hamTop)    { hamTop.classList.add('rotate-45', 'translate-y-[3px]'); }
-        if (hamBottom) { hamBottom.classList.add('-rotate-45', '-translate-y-[3px]'); }
-    }
-
-    function closeDropdown() {
-        if (!extraMenu) return;
-        extraMenu.classList.remove('max-h-32', 'opacity-100');
-        extraMenu.classList.add('max-h-0', 'opacity-0');
-        if (hamTop)    { hamTop.classList.remove('rotate-45', 'translate-y-[3px]'); }
-        if (hamBottom) { hamBottom.classList.remove('-rotate-45', '-translate-y-[3px]'); }
-    }
-
-    function isDropdownOpen() {
-        return extraMenu && extraMenu.classList.contains('max-h-32');
-    }
-
-    if (menuToggleBtn) {
-        menuToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (isDropdownOpen()) { closeDropdown(); } else { openDropdown(); }
+    /* ----------------------------------------------------------
+       NAVBAR: Search
+       ---------------------------------------------------------- */
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            renderBlog(e.target.value);
         });
     }
 
-    document.addEventListener('click', (e) => {
-        if (isDropdownOpen() && !e.target.closest('#menu-bar')) {
-            closeDropdown();
-        }
-    });
-
-    /* ---- Pencarian Live ---- */
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => renderBlog(e.target.value));
-    }
-
-    /* ---- Tombol Home ---- */
     if (homeBtn) {
         homeBtn.addEventListener('click', () => {
             if (searchInput) searchInput.value = '';
@@ -543,82 +571,91 @@ function pasangEventListeners() {
         });
     }
 
-    /* ---- Tab Masuk / Daftar ---- */
-    if (tabMasuk) {
-        tabMasuk.addEventListener('click', () => {
-            currentTab = 'masuk';
-            tabMasuk.className  = "text-4xl font-serif tracking-wide font-medium pb-2 text-white focus:outline-none transition duration-150";
-            tabDaftar.className = "text-4xl font-serif tracking-wide font-medium pb-2 text-white/40 hover:text-white/80 focus:outline-none transition duration-150";
-            if (loginUsername) loginUsername.placeholder = "Email atau Username";
-            if (loginConfirmPassword) loginConfirmPassword.classList.add('hidden');
-            if (mulaiBtn) mulaiBtn.innerText = "Mulai";
+    /* ----------------------------------------------------------
+       NAVBAR: Hamburger dropdown
+       ---------------------------------------------------------- */
+    let menuTerbuka = false;
+    if (menuToggleBtn && extraMenu) {
+        menuToggleBtn.addEventListener('click', () => {
+            menuTerbuka = !menuTerbuka;
+            if (menuTerbuka) {
+                extraMenu.style.maxHeight = extraMenu.scrollHeight + 'px';
+                extraMenu.classList.remove('opacity-0');
+                extraMenu.classList.add('opacity-100');
+                if (hamTop) hamTop.style.transform = 'rotate(45deg) translateY(2.5px)';
+                if (hamBottom) hamBottom.style.transform = 'rotate(-45deg) translateY(-2.5px)';
+            } else {
+                extraMenu.style.maxHeight = '0px';
+                extraMenu.classList.remove('opacity-100');
+                extraMenu.classList.add('opacity-0');
+                if (hamTop) hamTop.style.transform = '';
+                if (hamBottom) hamBottom.style.transform = '';
+            }
         });
     }
 
-    if (tabDaftar) {
+    /* ----------------------------------------------------------
+       MODAL MASUK: buka / tutup / tab / submit
+       ---------------------------------------------------------- */
+    function bukaModalMasuk() {
+        if (!modalMasuk) return;
+        modalMasuk.classList.remove('opacity-0', 'pointer-events-none');
+        modalMasuk.classList.add('opacity-100', 'pointer-events-auto');
+        setTimeout(() => modalMasukCard && modalMasukCard.classList.remove('scale-95'), 50);
+    }
+    function tutupModalMasuk() {
+        if (!modalMasuk) return;
+        modalMasuk.classList.add('opacity-0', 'pointer-events-none');
+        modalMasuk.classList.remove('opacity-100', 'pointer-events-auto');
+        if (modalMasukCard) modalMasukCard.classList.add('scale-95');
+    }
+
+    if (masukBtn) {
+        masukBtn.addEventListener('click', () => {
+            if (currentUser) {
+                logout();
+            } else {
+                bukaModalMasuk();
+            }
+        });
+    }
+
+    if (tutupMasuk) tutupMasuk.addEventListener('click', tutupModalMasuk);
+
+    let currentTab = 'masuk';
+    if (tabMasuk && tabDaftar) {
+        tabMasuk.addEventListener('click', () => {
+            currentTab = 'masuk';
+            tabMasuk.classList.add('border-white', 'text-white');
+            tabMasuk.classList.remove('border-transparent', 'text-white/40');
+            tabDaftar.classList.add('border-transparent', 'text-white/40');
+            tabDaftar.classList.remove('border-white', 'text-white');
+            if (loginConfirmPassword) loginConfirmPassword.classList.add('hidden');
+            if (mulaiBtn) mulaiBtn.innerText = "Mulai";
+        });
         tabDaftar.addEventListener('click', () => {
             currentTab = 'daftar';
-            tabDaftar.className = "text-4xl font-serif tracking-wide font-medium pb-2 text-white focus:outline-none transition duration-150";
-            tabMasuk.className  = "text-4xl font-serif tracking-wide font-medium pb-2 text-white/40 hover:text-white/80 focus:outline-none transition duration-150";
-            if (loginUsername) loginUsername.placeholder = "Email";
+            tabDaftar.classList.add('border-white', 'text-white');
+            tabDaftar.classList.remove('border-transparent', 'text-white/40');
+            tabMasuk.classList.add('border-transparent', 'text-white/40');
+            tabMasuk.classList.remove('border-white', 'text-white');
             if (loginConfirmPassword) loginConfirmPassword.classList.remove('hidden');
             if (mulaiBtn) mulaiBtn.innerText = "Daftar Sekarang";
         });
     }
 
-    /* ---- Buka / Tutup Modal Masuk ---- */
-    function closeMasukModal() {
-        if (!modalMasukCard || !modalMasuk) return;
-        modalMasukCard.classList.add('scale-95');
-        setTimeout(() => {
-            modalMasuk.classList.remove('opacity-100', 'pointer-events-auto');
-            modalMasuk.classList.add('opacity-0', 'pointer-events-none');
-        }, 150);
-    }
-
-    if (masukBtn) {
-        masukBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            closeDropdown();
-            if (currentUser) {
-                if (isSupabaseActive) await supabaseClient.auth.signOut();
-                currentUser    = null;
-                currentUserUid = null;
-                sessionStorage.removeItem('blogUser');
-                sessionStorage.removeItem('blogUid');
-                masukBtn.innerText = "Masuk";
-                if (profilBtn) profilBtn.classList.add('hidden');
-                tampilkanNotifikasi("Anda berhasil keluar!", "#0e4a2e", "green");
-                await muatDataBlogs();
-                return;
-            }
-            if (!isSupabaseActive) {
-                tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
-                return;
-            }
-            if (modalMasuk) {
-                modalMasuk.classList.remove('opacity-0', 'pointer-events-none');
-                modalMasuk.classList.add('opacity-100', 'pointer-events-auto');
-                setTimeout(() => modalMasukCard && modalMasukCard.classList.remove('scale-95'), 50);
-            }
-        });
-    }
-
-    if (tutupMasuk) tutupMasuk.addEventListener('click', closeMasukModal);
-
-    /* ---- Aksi Login / Daftar ---- */
     if (mulaiBtn) {
         mulaiBtn.addEventListener('click', async () => {
-            if (!isSupabaseActive) {
-                tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
+            const email    = loginUsername ? loginUsername.value.trim() : '';
+            const password = loginPassword ? loginPassword.value : '';
+
+            if (!email || !password) {
+                tampilkanNotifikasi("Mohon isi semua data!", "#4a0e0e", "red");
                 return;
             }
 
-            const emailOrUser = loginUsername ? loginUsername.value.trim() : '';
-            const password    = loginPassword ? loginPassword.value : '';
-
-            if (!emailOrUser || !password) {
-                tampilkanNotifikasi("Mohon isi semua data!", "#4a0e0e", "red");
+            if (!isSupabaseActive) {
+                tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
                 return;
             }
 
@@ -628,302 +665,258 @@ function pasangEventListeners() {
                     tampilkanNotifikasi("Kedua kata sandi tidak cocok!", "#4a0e0e", "red");
                     return;
                 }
-
                 try {
-                    const { data, error } = await supabaseClient.auth.signUp({ email: emailOrUser, password });
+                    const { error } = await supabaseClient.auth.signUp({ email, password });
                     if (error) throw error;
                     tampilkanNotifikasi("Pendaftaran berhasil! Cek email verifikasi Anda.", "#0e4a2e", "green");
-                    if (tabMasuk) tabMasuk.click();
+                    tabMasuk.click();
                 } catch (err) {
                     tampilkanNotifikasi(err.message, "#4a0e0e", "red");
                 }
                 return;
             }
 
+            // Mode masuk
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({ email: emailOrUser, password });
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                
-                // PERBAIKAN: Simpan user data dengan benar
-                currentUser = data.user.email;
+
+                currentUser    = data.user.email;
                 currentUserUid = data.user.id;
-                
-                console.log('✅ Login berhasil:', currentUser);
-                console.log('🆔 User ID:', currentUserUid);
-                
                 sessionStorage.setItem('blogUser', currentUser);
                 sessionStorage.setItem('blogUid', currentUserUid);
-                
-                if (masukBtn) masukBtn.innerText = `Keluar (${currentUser.split('@')[0]})`;
-                if (profilBtn) profilBtn.classList.remove('hidden');
+
+                tutupModalMasuk();
+                updateUserUI();
                 await sinkronkanProfilSupabase();
-                closeMasukModal();
-                tampilkanNotifikasi(`Selamat datang kembali, ${currentUser.split('@')[0]}!`, "#0e4a2e", "green");
-                await muatDataBlogs();
+                renderBlog(searchInput ? searchInput.value : '');
+                tampilkanNotifikasi(`Selamat datang, ${currentUser.split('@')[0]}!`, "#0e4a2e", "green");
             } catch (err) {
-                console.error('❌ Login error:', err);
                 tampilkanNotifikasi(err.message, "#4a0e0e", "red");
             }
         });
     }
 
-    /* ---- Buka / Tutup Modal Profil ---- */
-    if (profilBtn) {
-        profilBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!isSupabaseActive) {
-                tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
-                return;
-            }
-            
-            if (profileDisplayName) profileDisplayName.value = currentUser;
-            if (profileBio) profileBio.value = profileBioText;
-
-            // PERBAIKAN: Hitung jumlah artikel dengan fungsi yang konsisten
-            const postsCount = activeBlogs.filter(b => isArticleOwner(b)).length;
-            if (profileStatPosts) profileStatPosts.innerText = postsCount;
-
-            if (modalProfil) {
-                modalProfil.classList.remove('opacity-0', 'pointer-events-none');
-                modalProfil.classList.add('opacity-100', 'pointer-events-auto');
-                setTimeout(() => modalProfilCard && modalProfilCard.classList.remove('scale-95'), 50);
-            }
-        });
+    /* ----------------------------------------------------------
+       MODAL PROFIL: buka / tutup / avatar / simpan
+       ---------------------------------------------------------- */
+    function bukaModalProfil() {
+        if (!modalProfil) return;
+        if (profileDisplayName) profileDisplayName.value = currentUser || '';
+        if (profileBio) profileBio.value = profileBioText;
+        updateStatistikProfil();
+        modalProfil.classList.remove('opacity-0', 'pointer-events-none');
+        modalProfil.classList.add('opacity-100', 'pointer-events-auto');
+        setTimeout(() => modalProfilCard && modalProfilCard.classList.remove('scale-95'), 50);
+    }
+    function tutupModalProfil() {
+        if (!modalProfil) return;
+        modalProfil.classList.add('opacity-0', 'pointer-events-none');
+        modalProfil.classList.remove('opacity-100', 'pointer-events-auto');
+        if (modalProfilCard) modalProfilCard.classList.add('scale-95');
     }
 
-    if (tutupProfil) {
-        tutupProfil.addEventListener('click', () => {
-            if (modalProfilCard) modalProfilCard.classList.add('scale-95');
-            setTimeout(() => {
-                if (modalProfil) {
-                    modalProfil.classList.remove('opacity-100', 'pointer-events-auto');
-                    modalProfil.classList.add('opacity-0', 'pointer-events-none');
-                }
-            }, 150);
-        });
-    }
+    if (profilBtn) profilBtn.addEventListener('click', bukaModalProfil);
+    if (tutupProfil) tutupProfil.addEventListener('click', tutupModalProfil);
 
-    /* ---- Simpan Profil ---- */
-    if (simpanProfilBtn) {
-        simpanProfilBtn.addEventListener('click', async () => {
-            if (!isSupabaseActive || !currentUserUid) {
-                tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
-                return;
-            }
-
-            profileBioText = profileBio ? profileBio.value : profileBioText;
-
-            try {
-                const { error } = await supabaseClient.from('profiles').upsert({
-                    id:         currentUserUid,
-                    username:   currentUser.split('@')[0],
-                    bio:        profileBioText,
-                    avatar_url: profileAvatarData
-                });
-                if (error) throw error;
-                tampilkanNotifikasi("Profil berhasil disimpan di Supabase!", "#0e4a2e", "green");
-            } catch (err) {
-                console.error(err);
-                tampilkanNotifikasi("Gagal memperbarui profil di Supabase", "#4a0e0e", "red");
-            }
-            if (tutupProfil) tutupProfil.click();
-        });
-    }
-
-    /* ---- Upload Avatar ---- */
     if (pilihAvatarTrigger && avatarInput) {
         pilihAvatarTrigger.addEventListener('click', () => avatarInput.click());
         avatarInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    if (previewAvatar) {
-                        previewAvatar.src = ev.target.result;
-                        previewAvatar.classList.remove('hidden');
-                    }
-                    if (avatarPlaceholderTeks) avatarPlaceholderTeks.classList.add('hidden');
-                    profileAvatarData = ev.target.result;
-                };
-                reader.readAsDataURL(file);
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                profileAvatarData = ev.target.result;
+                if (previewAvatar) {
+                    previewAvatar.src = profileAvatarData;
+                    previewAvatar.classList.remove('hidden');
+                }
+                if (avatarPlaceholderTeks) avatarPlaceholderTeks.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (simpanProfilBtn) {
+        simpanProfilBtn.addEventListener('click', async () => {
+            if (!currentUserUid) {
+                tampilkanNotifikasi("Silakan masuk terlebih dahulu", "#4a0e0e", "red");
+                return;
+            }
+            profileBioText = profileBio ? profileBio.value : profileBioText;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .upsert([{
+                        id:         currentUserUid,
+                        username:   currentUser.split('@')[0],
+                        bio:        profileBioText,
+                        avatar_url: profileAvatarData
+                    }]);
+                if (error) throw error;
+                tampilkanNotifikasi("Profil berhasil diperbarui", "#0e4a2e", "green");
+                tutupModalProfil();
+            } catch (err) {
+                console.error("Gagal menyimpan profil:", err);
+                tampilkanNotifikasi("Gagal menyimpan profil: " + err.message, "#4a0e0e", "red");
             }
         });
     }
 
-    /* ---- Buka / Tutup Modal Tulis ---- */
-    function closeTulisModal() {
-        // Reset form
-        editingPostId = null;
-        if (uploadBtn) uploadBtn.innerText = "Upload Cerita";
-        if (inputJudul) inputJudul.value = "";
-        if (inputKonten) inputKonten.value = "";
-        if (previewGambar) {
-            previewGambar.classList.add('hidden');
-            previewGambar.src = "";
-        }
-        if (placeholderContainer) placeholderContainer.classList.remove('hidden');
-        
+    /* ----------------------------------------------------------
+       MODAL TULIS: buka / tutup / pilih gambar / submit (INSERT atau UPDATE)
+       ---------------------------------------------------------- */
+    function bukaModalTulis() {
+        if (!modalTulis) return;
+        modalTulis.classList.remove('opacity-0', 'pointer-events-none');
+        modalTulis.classList.add('opacity-100', 'pointer-events-auto');
+        setTimeout(() => modalCard && modalCard.classList.remove('scale-95'), 50);
+    }
+    function tutupModalTulis() {
+        if (!modalTulis) return;
+        modalTulis.classList.add('opacity-0', 'pointer-events-none');
+        modalTulis.classList.remove('opacity-100', 'pointer-events-auto');
         if (modalCard) modalCard.classList.add('scale-95');
-        setTimeout(() => {
-            if (modalTulis) {
-                modalTulis.classList.remove('opacity-100', 'pointer-events-auto');
-                modalTulis.classList.add('opacity-0', 'pointer-events-none');
-            }
-        }, 150);
+        resetFormTulis();
     }
 
     if (tulisBtn) {
         tulisBtn.addEventListener('click', () => {
-            if (!isSupabaseActive) {
-                tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
-                return;
-            }
-            
             if (!currentUser) {
-                tampilkanNotifikasi("Silakan login terlebih dahulu", "#4a0e0e", "red");
-                if (modalMasuk) {
-                    modalMasuk.classList.remove('opacity-0', 'pointer-events-none');
-                    modalMasuk.classList.add('opacity-100', 'pointer-events-auto');
-                    setTimeout(() => modalMasukCard && modalMasukCard.classList.remove('scale-95'), 50);
-                }
+                tampilkanNotifikasi("Silakan masuk terlebih dahulu untuk menulis", "#4a0e0e", "red");
+                bukaModalMasuk();
                 return;
             }
-            
-            // Reset form untuk menulis baru
-            editingPostId = null;
-            if (uploadBtn) uploadBtn.innerText = "Upload Cerita";
-            if (inputJudul) inputJudul.value = "";
-            if (inputKonten) inputKonten.value = "";
-            if (previewGambar) {
-                previewGambar.classList.add('hidden');
-                previewGambar.src = "";
-            }
-            if (placeholderContainer) placeholderContainer.classList.remove('hidden');
-            
-            if (modalTulis) {
-                modalTulis.classList.remove('opacity-0', 'pointer-events-none');
-                modalTulis.classList.add('opacity-100', 'pointer-events-auto');
-                setTimeout(() => modalCard && modalCard.classList.remove('scale-95'), 50);
-            }
+            resetFormTulis(); // pastikan mode tambah baru, bukan nyangkut dari edit sebelumnya
+            bukaModalTulis();
         });
     }
 
-    if (tutupModal) tutupModal.addEventListener('click', closeTulisModal);
+    if (tutupModal) tutupModal.addEventListener('click', tutupModalTulis);
 
-    /* ---- Pilih Gambar Sampul Artikel ---- */
     if (pilihGambarTrigger && fileInput) {
         pilihGambarTrigger.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    if (previewGambar) {
-                        previewGambar.src = ev.target.result;
-                        previewGambar.classList.remove('hidden');
-                    }
-                    if (placeholderContainer) placeholderContainer.classList.add('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                selectedImageBase64 = ev.target.result;
+                if (previewGambar) {
+                    previewGambar.src = selectedImageBase64;
+                    previewGambar.classList.remove('hidden');
+                }
+                if (placeholderContainer) placeholderContainer.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
         });
     }
 
-    /* ---- Upload / Update Artikel (PERBAIKAN) ---- */
     if (uploadBtn) {
         uploadBtn.addEventListener('click', async () => {
+            const judul  = inputJudul ? inputJudul.value.trim() : '';
+            const konten = inputKonten ? inputKonten.value.trim() : '';
+
+            if (!judul || !konten) {
+                tampilkanNotifikasi("Judul dan konten tidak boleh kosong", "#4a0e0e", "red");
+                return;
+            }
+            if (!currentUser) {
+                tampilkanNotifikasi("Silakan masuk terlebih dahulu", "#4a0e0e", "red");
+                return;
+            }
             if (!isSupabaseActive) {
                 tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
                 return;
             }
-
-            const judul  = inputJudul  ? inputJudul.value.trim()  : '';
-            const konten = inputKonten ? inputKonten.value.trim() : '';
-
-            if (!judul || !konten) {
-                tampilkanNotifikasi("Isi judul & konten!", "#4a0e0e", "red");
+            // Wajib ada gambar untuk artikel baru; untuk edit, gambar lama tetap dipakai jika tidak diganti
+            if (!editingPostId && !selectedImageBase64) {
+                tampilkanNotifikasi("Mohon unggah gambar sampul", "#4a0e0e", "red");
                 return;
             }
 
-            const imgSrc     = (previewGambar && previewGambar.src && !previewGambar.classList.contains('hidden'))
-                ? previewGambar.src
-                : "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop";
-            const authorName = currentUser
-                ? (currentUser.includes('@') ? currentUser.split('@')[0] : currentUser)
-                : "Anda";
-
-            const colors = [
-                "bg-[#4a0e0e] hover:bg-[#5f1414]",
-                "bg-[#0e244a] hover:bg-[#143265]",
-                "bg-[#0e4a2e] hover:bg-[#14653f]"
-            ];
-            const selectedColor = colors[Math.floor(Math.random() * colors.length)];
+            uploadBtn.disabled = true;
+            uploadBtn.innerText = editingPostId ? "Menyimpan..." : "Mengunggah...";
 
             try {
                 if (editingPostId) {
-                    // MODE EDIT: Update artikel yang ada
-                    console.log('🔄 Mengupdate artikel ID:', editingPostId);
-                    
-                    const { error } = await supabaseClient
+                    // ---- MODE UPDATE ----
+                    const updateData = {
+                        judul,
+                        konten,
+                        deskripsi: konten.slice(0, 100)
+                    };
+                    if (selectedImageBase64) updateData.image = selectedImageBase64;
+
+                    const { error, count } = await supabaseClient
                         .from('posts')
-                        .update({
-                            judul,
-                            konten,
-                            deskripsi: konten.substring(0, 45) + "...",
-                            image: imgSrc,
-                            color: selectedColor
-                        })
+                        .update(updateData, { count: 'exact' })
                         .eq('id', editingPostId);
 
-                    if (error) {
-                        console.error('❌ Error update:', error);
-                        throw error;
-                    }
-                    
-                    console.log('✅ Artikel berhasil diupdate');
-                    tampilkanNotifikasi("Artikel berhasil diperbarui!", "#0e4a2e", "green");
-                } else {
-                    // MODE TAMBAH: Buat artikel baru
-                    console.log('📝 Membuat artikel baru');
-                    
-                    const postObj = {
-                        judul,
-                        author:    authorName,
-                        deskripsi: konten.substring(0, 45) + "...",
-                        konten,
-                        image:     imgSrc,
-                        color:     selectedColor
-                    };
+                    if (error) throw error;
 
-                    const { error } = await supabaseClient.from('posts').insert([postObj]);
-                    if (error) {
-                        console.error('❌ Error insert:', error);
-                        throw error;
+                    if (count === 0) {
+                        console.warn('⚠️ Tidak ada baris terupdate. Kemungkinan RLS policy UPDATE menolak.');
+                        tampilkanNotifikasi("Update ditolak oleh database (cek RLS policy)", "#4a0e0e", "red");
+                        return;
                     }
-                    
-                    console.log('✅ Artikel berhasil dibuat');
-                    tampilkanNotifikasi("Cerita berhasil dipos ke Supabase!", "#0e4a2e", "green");
+
+                    tampilkanNotifikasi("Artikel berhasil diperbarui", "#0e4a2e", "green");
+                } else {
+                    // ---- MODE INSERT (artikel baru) ----
+                    const insertData = {
+                        judul,
+                        konten,
+                        deskripsi: konten.slice(0, 100),
+                        author: currentUser,
+                        image: selectedImageBase64 || ''
+                    };
+                    if (currentUserUid) insertData.user_id = currentUserUid;
+
+                    const { error } = await supabaseClient
+                        .from('posts')
+                        .insert([insertData]);
+
+                    if (error) throw error;
+
+                    tampilkanNotifikasi("Artikel berhasil diunggah", "#0e4a2e", "green");
                 }
+
+                tutupModalTulis();
+                await muatDataBlogs();
+
             } catch (err) {
                 console.error("❌ Gagal menyimpan artikel:", err);
                 tampilkanNotifikasi("Gagal menyimpan: " + err.message, "#4a0e0e", "red");
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerText = editingPostId ? "Update Cerita" : "Upload Cerita";
             }
-
-            await muatDataBlogs();
-            closeTulisModal();
         });
     }
 
-    /* ---- Tutup Modal Baca ---- */
-    if (tutupBaca) {
-        tutupBaca.addEventListener('click', () => {
-            if (modalBacaCard) modalBacaCard.classList.add('scale-95', 'translate-y-4');
-            setTimeout(() => {
-                if (modalBaca) {
-                    modalBaca.classList.remove('opacity-100', 'pointer-events-auto');
-                    modalBaca.classList.add('opacity-0', 'pointer-events-none');
-                }
-            }, 200);
-        });
+    /* ----------------------------------------------------------
+       MODAL BACA: tutup
+       ---------------------------------------------------------- */
+    function tutupModalBaca() {
+        if (!modalBaca) return;
+        modalBaca.classList.add('opacity-0', 'pointer-events-none');
+        modalBaca.classList.remove('opacity-100', 'pointer-events-auto');
+        if (modalBacaCard) modalBacaCard.classList.add('scale-95', 'translate-y-4');
     }
+    if (tutupBaca) tutupBaca.addEventListener('click', tutupModalBaca);
+
+    // Tutup modal kalau klik di area gelap luar kartu (untuk semua modal)
+    [
+        [modalMasuk, modalMasukCard, tutupModalMasuk],
+        [modalProfil, modalProfilCard, tutupModalProfil],
+        [modalTulis, modalCard, tutupModalTulis],
+        [modalBaca, modalBacaCard, tutupModalBaca]
+    ].forEach(([overlay, card, closeFn]) => {
+        if (!overlay) return;
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeFn();
+        });
+    });
 }
