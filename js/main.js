@@ -1,7 +1,6 @@
 // ============================================================
-//  Blog Minimalis — main.js (REVISI LENGKAP)
-//  Perbaikan: Edit & Hapus artikel benar-benar update database
-//  + handler upload-btn (insert vs update) yang sebelumnya hilang
+//  Blog Minimalis — main.js (REVISI v2)
+//  Fix: RLS DELETE, ensure user_id always set on insert, better logging
 // ============================================================
 
 /* ---- State Global ---- */
@@ -31,17 +30,10 @@ async function waitForSupabase(timeout = 5000) {
    FUNGSI: Cek apakah user adalah pemilik artikel
    ================================================================ */
 function isArticleOwner(blog) {
-    if (!currentUser) return false;
+    if (!currentUser || !currentUserUid) return false;
 
-    // Ambil username dari email
-    const currentUsername = currentUser.includes('@') ? currentUser.split('@')[0] : currentUser;
-
-    // Cek apakah author sama dengan currentUser, username, atau UID
-    return (
-        blog.author === currentUser ||
-        blog.author === currentUsername ||
-        (currentUserUid && blog.user_id === currentUserUid)
-    );
+    // RLS check: user_id harus cocok dengan auth.uid()
+    return blog.user_id === currentUserUid;
 }
 
 /* ================================================================
@@ -59,7 +51,7 @@ window.onload = async function () {
     if (savedUser && savedUid) {
         currentUser    = savedUser;
         currentUserUid = savedUid;
-        console.log('✅ User ditemukan di session:', currentUser);
+        console.log('✅ User ditemukan di session:', currentUser, 'UID:', currentUserUid);
     }
 
     // Tunggu Supabase siap
@@ -135,9 +127,10 @@ function updateUserUI() {
     const profilBtn = document.getElementById('profil-btn');
 
     if (currentUser) {
-        if (masukBtn) masukBtn.innerText = `Keluar (${currentUser.split('@')[0]})`;
+        const username = currentUser.includes('@') ? currentUser.split('@')[0] : currentUser;
+        if (masukBtn) masukBtn.innerText = `Keluar (${username})`;
         if (profilBtn) profilBtn.classList.remove('hidden');
-        console.log('👤 User login:', currentUser);
+        console.log('👤 User login:', currentUser, 'UID:', currentUserUid);
     } else {
         if (masukBtn) masukBtn.innerText = "Masuk";
         if (profilBtn) profilBtn.classList.add('hidden');
@@ -150,7 +143,7 @@ function updateUserUI() {
    ================================================================ */
 async function muatDataBlogs() {
     if (!isSupabaseActive) {
-        console.warn("Supabase tidak aktif");
+        console.warn("⚠️ Supabase tidak aktif");
         activeBlogs = [];
         renderBlog();
         return;
@@ -167,14 +160,13 @@ async function muatDataBlogs() {
         console.log(`✅ Memuat ${activeBlogs.length} artikel dari Supabase`);
 
         activeBlogs.forEach(blog => {
-            console.log(`📝 "${blog.judul}" oleh ${blog.author}`);
+            console.log(`📝 "${blog.judul}" | author: ${blog.author} | user_id: ${blog.user_id}`);
         });
 
-        // Update statistik jumlah post milik user di modal profil (kalau lagi terbuka)
         updateStatistikProfil();
 
     } catch (err) {
-        console.error("Gagal mengambil data dari Supabase:", err);
+        console.error("❌ Gagal mengambil data dari Supabase:", err);
         tampilkanNotifikasi("Gagal memuat data dari database", "#4a0e0e", "red");
         activeBlogs = [];
     }
@@ -183,7 +175,7 @@ async function muatDataBlogs() {
 
 function updateStatistikProfil() {
     const profileStatPosts = document.getElementById('profile-stat-posts');
-    if (!profileStatPosts || !currentUser) return;
+    if (!profileStatPosts || !currentUser || !currentUserUid) return;
     const jumlah = activeBlogs.filter(b => isArticleOwner(b)).length;
     profileStatPosts.innerText = jumlah;
 }
@@ -226,7 +218,7 @@ function renderBlog(filterQuery = '') {
 
         const isOwner = isArticleOwner(blog);
 
-        console.log(`🔍 "${blog.judul}" - isOwner: ${isOwner}, currentUser: ${currentUser}, author: ${blog.author}`);
+        console.log(`🔍 "${blog.judul}" | isOwner: ${isOwner} | blog.user_id: ${blog.user_id} | currentUid: ${currentUserUid}`);
 
         blogContainer.insertAdjacentHTML('beforeend', `
             <div class="blog-card flex flex-row items-center gap-3 sm:gap-5 w-full max-w-md hover-effect ${gridClass} text-white relative">
@@ -300,13 +292,13 @@ function editArtikel(id) {
 
     if (!isArticleOwner(blog)) {
         tampilkanNotifikasi("Anda tidak memiliki izin untuk mengedit artikel ini", "#4a0e0e", "red");
-        console.warn('❌ Bukan pemilik artikel. Current user:', currentUser, 'Author:', blog.author);
+        console.warn('❌ Bukan pemilik. Current UID:', currentUserUid, 'Blog UID:', blog.user_id);
         return;
     }
 
-    // Set state editing — INI KUNCI supaya tombol upload tahu harus UPDATE bukan INSERT
+    // Set state editing
     editingPostId = id;
-    selectedImageBase64 = null; // gambar lama dipakai kecuali user pilih gambar baru
+    selectedImageBase64 = null;
     console.log('✅ Edit mode aktif untuk ID:', editingPostId);
 
     const inputJudul = document.getElementById('input-judul');
@@ -346,13 +338,15 @@ async function hapusArtikel(id) {
         return;
     }
 
+    // ✅ OWNERSHIP CHECK — Gunakan isArticleOwner yang sudah di-fix
     if (!isArticleOwner(blog)) {
         tampilkanNotifikasi("Anda tidak memiliki izin untuk menghapus artikel ini", "#4a0e0e", "red");
-        console.warn('❌ Bukan pemilik artikel. Current user:', currentUser, 'Author:', blog.author);
+        console.warn('❌ Bukan pemilik. Current UID:', currentUserUid, 'Blog UID:', blog.user_id);
         return;
     }
 
     if (!confirm(`Apakah Anda yakin ingin menghapus artikel "${blog.judul}"?`)) {
+        console.log('❌ Batal hapus');
         return;
     }
 
@@ -362,32 +356,36 @@ async function hapusArtikel(id) {
     }
 
     try {
-        console.log('🚀 Menghapus artikel ID:', id);
+        console.log('🚀 Menghapus artikel ID:', id, 'user_id:', blog.user_id);
 
         const { error, count } = await supabaseClient
             .from('posts')
-            .delete({ count: 'exact' })
+            .delete()
             .eq('id', id);
 
         if (error) {
-            console.error('❌ Error dari Supabase:', error);
+            console.error('❌ Error dari Supabase:', error.message);
             throw error;
         }
 
-        // count === 0 berarti RLS policy menolak walau tanpa error eksplisit
+        console.log('✅ Delete response - count:', count);
+
+        // RLS policy hanya izinkan jika auth.uid() = user_id
+        // Jika count = 0, berarti RLS menolak DELETE (uid tidak match)
         if (count === 0) {
-            console.warn('⚠️ Tidak ada baris terhapus. Kemungkinan RLS policy DELETE menolak.');
-            tampilkanNotifikasi("Penghapusan ditolak oleh database (cek RLS policy)", "#4a0e0e", "red");
+            console.warn('⚠️ RLS policy DELETE menolak operasi');
+            tampilkanNotifikasi("Penghapusan ditolak: Anda bukan pemilik artikel atau RLS policy issue", "#4a0e0e", "red");
             return;
         }
 
-        console.log('✅ Artikel berhasil dihapus');
+        console.log('✅ Artikel berhasil dihapus dari database');
         tampilkanNotifikasi(`Artikel "${blog.judul}" berhasil dihapus`, "#0e4a2e", "green");
 
         await muatDataBlogs();
+
     } catch (err) {
-        console.error("❌ Gagal menghapus artikel:", err);
-        tampilkanNotifikasi("Gagal menghapus artikel: " + err.message, "#4a0e0e", "red");
+        console.error("❌ Gagal menghapus artikel:", err.message, err);
+        tampilkanNotifikasi("Gagal menghapus: " + err.message, "#4a0e0e", "red");
     }
 }
 
@@ -452,7 +450,7 @@ async function sinkronkanProfilSupabase() {
             }]);
         }
     } catch (err) {
-        console.error("Gagal memuat profil Supabase:", err);
+        console.error("❌ Gagal memuat profil Supabase:", err);
         tampilkanNotifikasi("Gagal memuat profil", "#4a0e0e", "red");
     }
 }
@@ -486,7 +484,7 @@ async function logout() {
             await supabaseClient.auth.signOut();
         }
     } catch (err) {
-        console.error("Gagal sign out:", err);
+        console.error("❌ Gagal sign out:", err);
     }
     sessionStorage.removeItem('blogUser');
     sessionStorage.removeItem('blogUid');
@@ -686,6 +684,8 @@ function pasangEventListeners() {
                 sessionStorage.setItem('blogUser', currentUser);
                 sessionStorage.setItem('blogUid', currentUserUid);
 
+                console.log('✅ Login sukses - UID:', currentUserUid);
+
                 tutupModalMasuk();
                 updateUserUI();
                 await sinkronkanProfilSupabase();
@@ -758,7 +758,7 @@ function pasangEventListeners() {
                 tampilkanNotifikasi("Profil berhasil diperbarui", "#0e4a2e", "green");
                 tutupModalProfil();
             } catch (err) {
-                console.error("Gagal menyimpan profil:", err);
+                console.error("❌ Gagal menyimpan profil:", err);
                 tampilkanNotifikasi("Gagal menyimpan profil: " + err.message, "#4a0e0e", "red");
             }
         });
@@ -788,7 +788,7 @@ function pasangEventListeners() {
                 bukaModalMasuk();
                 return;
             }
-            resetFormTulis(); // pastikan mode tambah baru, bukan nyangkut dari edit sebelumnya
+            resetFormTulis();
             bukaModalTulis();
         });
     }
@@ -822,7 +822,7 @@ function pasangEventListeners() {
                 tampilkanNotifikasi("Judul dan konten tidak boleh kosong", "#4a0e0e", "red");
                 return;
             }
-            if (!currentUser) {
+            if (!currentUser || !currentUserUid) {
                 tampilkanNotifikasi("Silakan masuk terlebih dahulu", "#4a0e0e", "red");
                 return;
             }
@@ -830,7 +830,8 @@ function pasangEventListeners() {
                 tampilkanNotifikasi("Database tidak tersedia", "#4a0e0e", "red");
                 return;
             }
-            // Wajib ada gambar untuk artikel baru; untuk edit, gambar lama tetap dipakai jika tidak diganti
+
+            // Validasi gambar
             if (!editingPostId && !selectedImageBase64) {
                 tampilkanNotifikasi("Mohon unggah gambar sampul", "#4a0e0e", "red");
                 return;
@@ -842,44 +843,61 @@ function pasangEventListeners() {
             try {
                 if (editingPostId) {
                     // ---- MODE UPDATE ----
+                    console.log('🔄 UPDATE mode - ID:', editingPostId);
+
                     const updateData = {
                         judul,
                         konten,
                         deskripsi: konten.slice(0, 100)
                     };
-                    if (selectedImageBase64) updateData.image = selectedImageBase64;
+                    // Gambar baru hanya update jika user pilih
+                    if (selectedImageBase64) {
+                        updateData.image = selectedImageBase64;
+                    }
 
                     const { error, count } = await supabaseClient
                         .from('posts')
-                        .update(updateData, { count: 'exact' })
+                        .update(updateData)
                         .eq('id', editingPostId);
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('❌ Update error:', error.message);
+                        throw error;
+                    }
+
+                    console.log('✅ Update count:', count);
 
                     if (count === 0) {
-                        console.warn('⚠️ Tidak ada baris terupdate. Kemungkinan RLS policy UPDATE menolak.');
-                        tampilkanNotifikasi("Update ditolak oleh database (cek RLS policy)", "#4a0e0e", "red");
+                        console.warn('⚠️ RLS policy UPDATE menolak');
+                        tampilkanNotifikasi("Update ditolak (cek RLS policy atau ownership)", "#4a0e0e", "red");
                         return;
                     }
 
                     tampilkanNotifikasi("Artikel berhasil diperbarui", "#0e4a2e", "green");
                 } else {
                     // ---- MODE INSERT (artikel baru) ----
+                    console.log('✏️ INSERT mode - UID:', currentUserUid);
+
                     const insertData = {
                         judul,
                         konten,
                         deskripsi: konten.slice(0, 100),
                         author: currentUser,
-                        image: selectedImageBase64 || ''
+                        image: selectedImageBase64 || '',
+                        user_id: currentUserUid  // ✅ HARUS ADA — RLS policy memerlukan ini
                     };
-                    if (currentUserUid) insertData.user_id = currentUserUid;
 
-                    const { error } = await supabaseClient
+                    const { error, data } = await supabaseClient
                         .from('posts')
-                        .insert([insertData]);
+                        .insert([insertData])
+                        .select();
 
-                    if (error) throw error;
+                    if (error) {
+                        console.error('❌ Insert error:', error.message);
+                        throw error;
+                    }
 
+                    console.log('✅ Insert sukses:', data);
                     tampilkanNotifikasi("Artikel berhasil diunggah", "#0e4a2e", "green");
                 }
 
@@ -887,7 +905,7 @@ function pasangEventListeners() {
                 await muatDataBlogs();
 
             } catch (err) {
-                console.error("❌ Gagal menyimpan artikel:", err);
+                console.error("❌ Gagal menyimpan artikel:", err.message);
                 tampilkanNotifikasi("Gagal menyimpan: " + err.message, "#4a0e0e", "red");
             } finally {
                 uploadBtn.disabled = false;
